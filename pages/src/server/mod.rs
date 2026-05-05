@@ -8,3 +8,117 @@ pub mod playlists;
 pub mod search;
 pub mod subsonic_sync;
 pub mod unsupported;
+
+use config::{AppConfig, MusicService};
+use dioxus::prelude::{ReadableExt, WritableExt};
+use std::path::PathBuf;
+
+fn offline_cache_dir() -> PathBuf {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        // macOS: ~/Library/Caches/kopuz, Linux: XDG_CACHE_HOME/kopuz or ~/.cache/kopuz
+        #[cfg(target_os = "macos")]
+        let base = std::env::var("HOME")
+            .map(|h| PathBuf::from(h).join("Library").join("Caches").join("kopuz"))
+            .unwrap_or_else(|_| PathBuf::from("./cache/kopuz"));
+        #[cfg(not(target_os = "macos"))]
+        let base = std::env::var("XDG_CACHE_HOME")
+            .map(|p| PathBuf::from(p).join("kopuz"))
+            .unwrap_or_else(|_| {
+                std::env::var("HOME")
+                    .map(|h| PathBuf::from(h).join(".cache").join("kopuz"))
+                    .unwrap_or_else(|_| PathBuf::from("./cache/kopuz"))
+            });
+        let dir = base.join("offline_tracks");
+        let _ = std::fs::create_dir_all(&dir);
+        dir
+    }
+    #[cfg(target_arch = "wasm32")]
+    PathBuf::from("./cache/offline_tracks")
+}
+
+pub fn build_download_url(
+    item_id: &str,
+    config: &AppConfig,
+) -> Option<(String, &'static str)> {
+    let server = config.server.as_ref()?;
+    let quality = config.offline_quality;
+    let ext = quality.file_extension();
+
+    let url = match server.service {
+        MusicService::Jellyfin => {
+            let token = server.access_token.as_deref().unwrap_or("");
+            match quality.jellyfin_bitrate_bps() {
+                Some(bps) => format!(
+                    "{}/Audio/{}/stream?audioBitRate={}&audioCodec=mp3&api_key={}",
+                    server.url, item_id, bps, token
+                ),
+                None => format!(
+                    "{}/Audio/{}/stream?static=true&api_key={}",
+                    server.url, item_id, token
+                ),
+            }
+        }
+        MusicService::Subsonic | MusicService::Custom => {
+            let username = server.user_id.as_deref()?;
+            let password_or_token = server.access_token.as_deref()?;
+            let resolved_password =
+                ::server::provider::resolve_subsonic_secret(password_or_token)?;
+            let client =
+                ::server::subsonic::SubsonicClient::new(&server.url, username, &resolved_password);
+            let kbps = quality.subsonic_max_bitrate_kbps();
+            client.stream_url_with_bitrate(item_id, Some(kbps)).ok()?
+        }
+    };
+    Some((url, ext))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn download_track_to_cache(
+    item_id: &str,
+    url: &str,
+    ext: &str,
+) -> Result<PathBuf, String> {
+    let bytes = reqwest::get(url)
+        .await
+        .map_err(|e| format!("Download failed: {e}"))?
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read response: {e}"))?;
+
+    let dir = offline_cache_dir();
+    let file_path = dir.join(format!("{item_id}.{ext}"));
+    tokio::fs::write(&file_path, &bytes)
+        .await
+        .map_err(|e| format!("Failed to save file: {e}"))?;
+
+    Ok(file_path)
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn download_tracks_batch(
+    item_ids: Vec<String>,
+    mut config: dioxus::prelude::Signal<AppConfig>,
+) {
+    for id in item_ids {
+        // Skip already-downloaded tracks
+        if config.read().offline_tracks.contains_key(&id) {
+            continue;
+        }
+        let result = {
+            let conf = config.read();
+            build_download_url(&id, &conf)
+        };
+        if let Some((url, ext)) = result {
+            match download_track_to_cache(&id, &url, ext).await {
+                Ok(path) => {
+                    config.write().offline_tracks.insert(
+                        id.clone(),
+                        path.to_string_lossy().into_owned(),
+                    );
+                }
+                Err(e) => eprintln!("Batch download failed for {id}: {e}"),
+            }
+        }
+    }
+}

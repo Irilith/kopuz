@@ -271,6 +271,90 @@ impl Default for EqualizerSettings {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum OfflineQuality {
+    Kbps128,
+    Kbps160,
+    Kbps192,
+    Kbps256,
+    #[default]
+    Kbps320,
+    Original,
+}
+
+impl OfflineQuality {
+    pub const ALL: &'static [Self] = &[
+        Self::Kbps128,
+        Self::Kbps160,
+        Self::Kbps192,
+        Self::Kbps256,
+        Self::Kbps320,
+        Self::Original,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Kbps128 => "128 kbps",
+            Self::Kbps160 => "160 kbps",
+            Self::Kbps192 => "192 kbps",
+            Self::Kbps256 => "256 kbps",
+            Self::Kbps320 => "320 kbps",
+            Self::Original => "Original",
+        }
+    }
+
+    pub fn value_str(self) -> &'static str {
+        match self {
+            Self::Kbps128 => "128",
+            Self::Kbps160 => "160",
+            Self::Kbps192 => "192",
+            Self::Kbps256 => "256",
+            Self::Kbps320 => "320",
+            Self::Original => "original",
+        }
+    }
+
+    pub fn from_value_str(s: &str) -> Self {
+        match s {
+            "128" => Self::Kbps128,
+            "160" => Self::Kbps160,
+            "192" => Self::Kbps192,
+            "256" => Self::Kbps256,
+            "320" => Self::Kbps320,
+            _ => Self::Original,
+        }
+    }
+
+    pub fn jellyfin_bitrate_bps(self) -> Option<u32> {
+        match self {
+            Self::Kbps128 => Some(128_000),
+            Self::Kbps160 => Some(160_000),
+            Self::Kbps192 => Some(192_000),
+            Self::Kbps256 => Some(256_000),
+            Self::Kbps320 => Some(320_000),
+            Self::Original => None,
+        }
+    }
+
+    pub fn subsonic_max_bitrate_kbps(self) -> u32 {
+        match self {
+            Self::Kbps128 => 128,
+            Self::Kbps160 => 160,
+            Self::Kbps192 => 192,
+            Self::Kbps256 => 256,
+            Self::Kbps320 => 320,
+            Self::Original => 0,
+        }
+    }
+
+    pub fn file_extension(self) -> &'static str {
+        match self {
+            Self::Original => "audio",
+            _ => "mp3",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
 pub enum TitlebarMode {
     #[default]
@@ -329,6 +413,10 @@ pub struct AppConfig {
     pub ytdlp_history: Vec<YtdlpHistoryEntry>,
     #[serde(default)]
     pub titlebar_mode: TitlebarMode,
+    #[serde(default)]
+    pub offline_quality: OfflineQuality,
+    #[serde(default)]
+    pub offline_tracks: HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -452,6 +540,8 @@ impl Default for AppConfig {
             ytdlp_options: YtdlpOptions::default(),
             ytdlp_history: Vec::new(),
             titlebar_mode: TitlebarMode::Custom,
+            offline_quality: OfflineQuality::default(),
+            offline_tracks: HashMap::new(),
         }
     }
 }

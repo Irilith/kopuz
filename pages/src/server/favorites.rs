@@ -28,6 +28,7 @@ pub fn JellyfinFavorites(
     let mut selected_tracks = use_signal(|| HashSet::<PathBuf>::new());
     let mut show_playlist_modal = use_signal(|| false);
     let mut selected_track_for_playlist = use_signal(|| None::<PathBuf>);
+    let mut downloading_tracks = use_signal(|| HashSet::<String>::new());
 
     use_effect(move || {
         if !*has_synced.read() {
@@ -138,6 +139,13 @@ pub fn JellyfinFavorites(
             let is_menu_open = active_menu_track.read().as_ref() == Some(&track.path);
             let is_selected = selected_tracks.read().contains(&track_path);
 
+            let path_str = track.path.to_string_lossy().to_string();
+            let item_id: String = path_str.split(':').nth(1).unwrap_or("").to_string();
+            let is_downloaded = config.read().offline_tracks.contains_key(&item_id);
+            let is_downloading = downloading_tracks.read().contains(&item_id);
+            let item_id_dl = item_id.clone();
+            let item_id_check = item_id.clone();
+
             rsx! {
                 TrackRow {
                     key: "{track_key}",
@@ -146,6 +154,8 @@ pub fn JellyfinFavorites(
                     is_menu_open,
                     is_selection_mode: is_selection_mode(),
                     is_selected,
+                    is_downloaded,
+                    is_downloading,
                     on_long_press: move |_| {
                         is_selection_mode.set(true);
                         selected_tracks.write().insert(track_path.clone());
@@ -175,6 +185,32 @@ pub fn JellyfinFavorites(
                     on_close_menu: move |_| active_menu_track.set(None),
                     on_delete: move |_| active_menu_track.set(None),
                     hide_delete: true,
+                    on_download: move |_| {
+                        if downloading_tracks.read().contains(&item_id_check) {
+                            return;
+                        }
+                        downloading_tracks.write().insert(item_id_dl.clone());
+                        active_menu_track.set(None);
+                        let id = item_id_dl.clone();
+                        spawn(async move {
+                            let result = {
+                                let conf = config.read();
+                                crate::server::build_download_url(&id, &conf)
+                            };
+                            if let Some((url, ext)) = result {
+                                match crate::server::download_track_to_cache(&id, &url, ext).await {
+                                    Ok(path) => {
+                                        config.write().offline_tracks.insert(
+                                            id.clone(),
+                                            path.to_string_lossy().into_owned(),
+                                        );
+                                    }
+                                    Err(e) => eprintln!("Download failed: {e}"),
+                                }
+                            }
+                            downloading_tracks.write().remove(&id);
+                        });
+                    },
                     on_play: move |_| {
                         queue.set(queue_source.clone());
                         ctrl.play_track(idx);

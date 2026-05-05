@@ -14,6 +14,7 @@ pub fn JellyfinPlaylists(
 ) -> Element {
     let mut last_fetch_key = use_signal(|| None::<String>);
     let mut fetch_request_id = use_signal(|| 0u64);
+    let mut downloading_playlists = use_signal(|| std::collections::HashSet::<String>::new());
 
     use_effect(move || {
         let fetch_context = {
@@ -177,14 +178,17 @@ pub fn JellyfinPlaylists(
                             }
                         };
 
+                        let playlist_id_nav = playlist.id.clone();
+                        let playlist_id_dl = playlist.id.clone();
+                        let playlist_id_check = playlist.id.clone();
+                        let track_ids = playlist.tracks.clone();
+                        let is_dl = downloading_playlists.read().contains(&playlist.id);
+
                         rsx! {
                             div {
                                 key: "{playlist.id}",
-                                class: "bg-white/5 border border-white/5 rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer group",
-                                onclick: {
-                                    let id = playlist.id.clone();
-                                    move |_| selected_playlist_id.set(Some(id.clone()))
-                                },
+                                class: "bg-white/5 border border-white/5 rounded-2xl p-6 hover:bg-white/10 transition-all cursor-pointer group relative",
+                                onclick: move |_| selected_playlist_id.set(Some(playlist_id_nav.clone())),
                                 div {
                                     class: "mb-4 w-full aspect-square rounded-xl flex items-center justify-center overflow-hidden transition-all bg-white/5",
                                     if let Some(url) = cover_url {
@@ -203,6 +207,30 @@ pub fn JellyfinPlaylists(
                                 }
                                 h3 { class: "text-xl font-bold text-white mb-1 truncate", "{playlist.name}" }
                                 p { class: "text-sm text-slate-400", "Server • {playlist.tracks.len()} tracks" }
+
+                                button {
+                                    class: "absolute top-4 right-4 w-8 h-8 rounded-full bg-black/40 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:border-white/30 transition-colors opacity-0 group-hover:opacity-100",
+                                    title: "Download playlist for offline playback",
+                                    disabled: is_dl,
+                                    onclick: move |evt| {
+                                        evt.stop_propagation();
+                                        if downloading_playlists.read().contains(&playlist_id_check) {
+                                            return;
+                                        }
+                                        downloading_playlists.write().insert(playlist_id_dl.clone());
+                                        let ids = track_ids.clone();
+                                        let pid = playlist_id_dl.clone();
+                                        spawn(async move {
+                                            crate::server::download_tracks_batch(ids, config).await;
+                                            downloading_playlists.write().remove(&pid);
+                                        });
+                                    },
+                                    if is_dl {
+                                        i { class: "fa-solid fa-spinner fa-spin text-xs" }
+                                    } else {
+                                        i { class: "fa-solid fa-download text-xs" }
+                                    }
+                                }
                             }
                         }
                     })}

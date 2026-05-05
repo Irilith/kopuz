@@ -24,6 +24,8 @@ pub fn PlaylistDetail(
     mut queue: Signal<Vec<reader::models::Track>>,
     mut current_queue_index: Signal<usize>,
     on_close: EventHandler<()>,
+    on_download_all: Option<EventHandler<()>>,
+    #[props(default = false)] is_downloading_all: bool,
 ) -> Element {
     let store = playlist_store.read();
     let mut active_menu_track = use_signal(|| None::<PathBuf>);
@@ -530,7 +532,9 @@ pub fn PlaylistDetail(
                             active_menu_track.set(None);
                         }
                     }
-                }
+                },
+                on_download_all: if is_jellyfin { on_download_all } else { None },
+                is_downloading_all,
             }
 
             if is_selection_mode() {

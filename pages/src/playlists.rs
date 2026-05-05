@@ -111,22 +111,46 @@ pub fn PlaylistsPage(
                     on_close: move |_| selected_folder.set(None),
                 }
             } else if let Some(pid) = selected_playlist_id.read().clone() {
-                PlaylistDetail {
-                    playlist_id: pid,
-                    playlist_store,
-                    library,
-                    config,
-                    player,
-                    is_playing,
-                    current_playing,
-                    current_song_cover_url,
-                    current_song_title,
-                    current_song_artist,
-                    current_song_duration,
-                    current_song_progress,
-                    queue,
-                    current_queue_index,
-                    on_close: move |_| selected_playlist_id.set(None),
+                {
+                    let mut is_downloading_all = use_signal(|| false);
+                    let pid_for_dl = pid.clone();
+                    rsx! {
+                        PlaylistDetail {
+                            playlist_id: pid,
+                            playlist_store,
+                            library,
+                            config,
+                            player,
+                            is_playing,
+                            current_playing,
+                            current_song_cover_url,
+                            current_song_title,
+                            current_song_artist,
+                            current_song_duration,
+                            current_song_progress,
+                            queue,
+                            current_queue_index,
+                            on_close: move |_| selected_playlist_id.set(None),
+                            is_downloading_all: *is_downloading_all.read(),
+                            on_download_all: move |_| {
+                                if *is_downloading_all.read() { return; }
+                                let ids: Vec<String> = {
+                                    let store = playlist_store.read();
+                                    store.jellyfin_playlists
+                                        .iter()
+                                        .find(|p| p.id == pid_for_dl)
+                                        .map(|p| p.tracks.clone())
+                                        .unwrap_or_default()
+                                };
+                                if ids.is_empty() { return; }
+                                is_downloading_all.set(true);
+                                spawn(async move {
+                                    crate::server::download_tracks_batch(ids, config).await;
+                                    is_downloading_all.set(false);
+                                });
+                            },
+                        }
+                    }
                 }
             } else {
                 div { class: "flex items-center justify-between mb-8",

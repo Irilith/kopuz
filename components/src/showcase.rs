@@ -21,6 +21,9 @@ pub struct ShowcaseProps {
     pub on_click_menu: Option<EventHandler<usize>>,
     pub on_close_menu: Option<EventHandler<()>>,
     pub actions: Option<Element>,
+    pub on_download_all: Option<EventHandler<()>>,
+    #[props(default = false)]
+    pub is_downloading_all: bool,
     #[props(default = false)]
     pub is_selection_mode: bool,
     #[props(default = HashSet::new())]
@@ -94,6 +97,22 @@ pub fn Showcase(props: ShowcaseProps) -> Element {
                              class: "w-14 h-14 rounded-full bg-indigo-500 hover:bg-indigo-400 text-black flex items-center justify-center transition-transform hover:scale-105",
                              onclick: move |_| props.on_play.call(0),
                              i { class: "fa-solid fa-play text-xl ml-1" }
+                         }
+                         if let Some(ref handler) = props.on_download_all {
+                             button {
+                                 class: "w-12 h-12 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white flex items-center justify-center transition-colors",
+                                 title: "Download all for offline playback",
+                                 disabled: props.is_downloading_all,
+                                 onclick: {
+                                     let h = handler.clone();
+                                     move |_| h.call(())
+                                 },
+                                 if props.is_downloading_all {
+                                     i { class: "fa-solid fa-spinner fa-spin" }
+                                 } else {
+                                     i { class: "fa-solid fa-download" }
+                                 }
+                             }
                          }
                      }
                      if let Some(actions) = props.actions {

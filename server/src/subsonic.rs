@@ -348,6 +348,14 @@ impl SubsonicClient {
     }
 
     pub fn stream_url(&self, item_id: &str) -> Result<String, String> {
+        self.stream_url_with_bitrate(item_id, None)
+    }
+
+    pub fn stream_url_with_bitrate(
+        &self,
+        item_id: &str,
+        max_bitrate_kbps: Option<u32>,
+    ) -> Result<String, String> {
         let mut url = reqwest::Url::parse(&format!("{}/rest/stream.view", self.base_url))
             .map_err(|e| format!("Invalid Subsonic base URL '{}': {}", self.base_url, e))?;
         {
@@ -356,6 +364,12 @@ impl SubsonicClient {
                 pairs.append_pair(&k, &v);
             }
             pairs.append_pair("id", item_id);
+            if let Some(kbps) = max_bitrate_kbps {
+                pairs.append_pair("maxBitRate", &kbps.to_string());
+                if kbps > 0 {
+                    pairs.append_pair("format", "mp3");
+                }
+            }
         }
         Ok(url.to_string())
     }

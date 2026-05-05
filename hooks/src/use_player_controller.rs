@@ -231,6 +231,74 @@ impl PlayerController {
                 let parts: Vec<&str> = path_str.split(':').collect();
                 let id = parts.get(1).unwrap_or(&"").to_string();
 
+                // Check offline cache first
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let offline_path = {
+                        let conf = self.config.read();
+                        conf.offline_tracks
+                            .get(&id)
+                            .map(std::path::PathBuf::from)
+                            .filter(|p| p.exists())
+                    };
+                    if let Some(local_path) = offline_path {
+                        if let Ok((source, hint)) = decoder::open_file(&local_path) {
+                            self.current_queue_index.set(idx);
+                            self.player.write().stop();
+                            self.is_playing.set(false);
+
+                            let cover_url = self.cover_url_for_track(&track);
+                            self.hydrate_current_track_metadata(idx, 0);
+                            self.current_song_cover_url.set(cover_url.clone());
+                            self.is_loading.set(true);
+
+                            let mut player = self.player;
+                            let mut is_playing = self.is_playing;
+                            let mut is_loading = self.is_loading;
+                            let mut skip_in_progress = self.skip_in_progress;
+                            let play_generation = self.play_generation;
+                            let volume = self.volume;
+                            let mut current_song_progress = self.current_song_progress;
+                            let mut pending_resume = self.pending_resume;
+                            let cfg_signal = self.config;
+
+                            spawn(async move {
+                                if *play_generation.read() == current_gen {
+                                    let meta = NowPlayingMeta {
+                                        title: track.title.clone(),
+                                        artist: track.artist.clone(),
+                                        album: track.album.clone(),
+                                        duration: std::time::Duration::from_secs(track.duration),
+                                        artwork: Some(cover_url),
+                                    };
+                                    if let Err(e) = player.write().play(source, meta, hint) {
+                                        eprintln!("Offline playback error: {e}");
+                                        is_loading.set(false);
+                                        skip_in_progress.set(false);
+                                        return;
+                                    }
+                                    player.write().set_volume(*volume.peek());
+                                    if let Some(seek_secs) = restore_seek_secs {
+                                        if seek_secs > 0 {
+                                            player.write().seek(Duration::from_secs(seek_secs));
+                                        }
+                                    }
+                                    is_playing.set(true);
+                                    is_loading.set(false);
+                                    skip_in_progress.set(false);
+
+                                    if clear_pending_resume_on_success {
+                                        pending_resume.set(None);
+                                    }
+                                    let _ = cfg_signal;
+                                    current_song_progress.set(0);
+                                }
+                            });
+                            return;
+                        }
+                    }
+                }
+
                 if let Some((stream_url, cover_url)) = {
                     let conf = self.config.read();
                     conf.server.as_ref().map(|server| match server.service {

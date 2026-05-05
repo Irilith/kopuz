@@ -26,6 +26,7 @@ pub fn JellyfinArtist(
 
     let mut is_selection_mode = use_signal(|| false);
     let mut selected_tracks = use_signal(|| HashSet::<PathBuf>::new());
+    let mut is_artist_downloading = use_signal(|| false);
 
     let sort_order = use_signal(move || config.read().artist_view_order.clone());
     use_effect(move || {
@@ -448,8 +449,10 @@ pub fn JellyfinArtist(
                         } else {
                             {
                                 let add_all_to_playlist_text = i18n::t("add_all_to_playlist").to_string();
+                                let download_album_text = "Download Album".to_string();
                                 let album_menu_actions = vec![
                                     MenuAction::new(add_all_to_playlist_text.as_str(), "fa-solid fa-list-music"),
+                                    MenuAction::new(download_album_text.as_str(), "fa-solid fa-download"),
                                 ];
                                 rsx! {
                                     div { class: "grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-6",
@@ -522,6 +525,22 @@ pub fn JellyfinArtist(
                                                                         if idx == 0 {
                                                                             pending_album_id_for_playlist.set(Some(id.clone()));
                                                                             show_album_playlist_modal.set(true);
+                                                                        } else if idx == 1 {
+                                                                            let album_id = id.clone();
+                                                                            let ids: Vec<String> = {
+                                                                                let lib = library.read();
+                                                                                lib.jellyfin_tracks
+                                                                                    .iter()
+                                                                                    .filter(|t| t.album_id == album_id)
+                                                                                    .filter_map(|t| {
+                                                                                        let s = t.path.to_string_lossy().to_string();
+                                                                                        s.split(':').nth(1).map(|id| id.to_string())
+                                                                                    })
+                                                                                    .collect()
+                                                                            };
+                                                                            spawn(async move {
+                                                                                crate::server::download_tracks_batch(ids, config).await;
+                                                                            });
                                                                         }
                                                                     }
                                                                 },
@@ -594,6 +613,22 @@ pub fn JellyfinArtist(
                                     }
                                 },
                                 on_delete_track: move |_| active_menu_track.set(None),
+                                on_download_all: move |_| {
+                                    if *is_artist_downloading.read() { return; }
+                                    let ids: Vec<String> = artist_tracks()
+                                        .iter()
+                                        .filter_map(|t| {
+                                            let s = t.path.to_string_lossy().to_string();
+                                            s.split(':').nth(1).map(|id| id.to_string())
+                                        })
+                                        .collect();
+                                    is_artist_downloading.set(true);
+                                    spawn(async move {
+                                        crate::server::download_tracks_batch(ids, config).await;
+                                        is_artist_downloading.set(false);
+                                    });
+                                },
+                                is_downloading_all: *is_artist_downloading.read(),
                                 actions: Some(rsx! {
                                     SortOrderToggle { sort_order }
                                 }),

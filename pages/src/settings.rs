@@ -6,7 +6,7 @@ use components::settings_items::{
     ToggleSetting,
 };
 use components::settings_popups::{AddServerPopup, LoginPopup};
-use config::{AppConfig, MusicService};
+use config::{AppConfig, MusicService, OfflineQuality};
 use dioxus::prelude::*;
 use hooks::use_player_controller::PlayerController;
 
@@ -259,6 +259,32 @@ pub fn Settings(config: Signal<AppConfig>) -> Element {
                         //         }
                         //     }
                         // }
+                    }
+                }
+
+                if config.read().server.is_some() {
+                    section {
+                        h2 {
+                            class: "text-lg font-semibold text-white/80 mb-4 border-b border-white/5 pb-2",
+                            "Offline Downloads"
+                        }
+                        div { class: "space-y-4",
+                            SettingItem {
+                                title: "Download Quality".to_string(),
+                                control: rsx! {
+                                    select {
+                                        class: "bg-stone-800 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-indigo-500",
+                                        value: config.read().offline_quality.value_str(),
+                                        onchange: move |evt| {
+                                            config.write().offline_quality = OfflineQuality::from_value_str(&evt.value());
+                                        },
+                                        for q in OfflineQuality::ALL {
+                                            option { value: q.value_str(), "{q.label()}" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
