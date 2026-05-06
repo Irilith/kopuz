@@ -349,7 +349,7 @@ impl OfflineQuality {
 
     pub fn file_extension(self) -> &'static str {
         match self {
-            Self::Original => "audio",
+            Self::Original => "bin",
             _ => "mp3",
         }
     }

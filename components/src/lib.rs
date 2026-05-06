@@ -1,4 +1,5 @@
 pub mod album_details;
+pub mod download_overlay;
 pub mod folder_detail;
 pub mod folder_picker;
 pub mod bottombar;

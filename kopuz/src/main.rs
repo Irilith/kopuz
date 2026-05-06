@@ -6,9 +6,14 @@ use crate::web_storage::{
     save_web_ui_state,
 };
 use components::{
-    bottombar::Bottombar, fullscreen::Fullscreen, rightbar::Rightbar, sidebar::Sidebar,
+    bottombar::Bottombar,
+    download_overlay::DownloadOverlay,
+    fullscreen::Fullscreen,
+    rightbar::Rightbar,
+    sidebar::Sidebar,
     titlebar::Titlebar,
 };
+use pages::server::download_manager::DownloadQueue;
 #[cfg(not(target_arch = "wasm32"))]
 use dioxus::desktop::tao::dpi::LogicalSize;
 #[cfg(not(target_arch = "wasm32"))]
@@ -278,7 +283,13 @@ fn main() {
             );
         }
 
+        let webview_data_dir = directories::ProjectDirs::from("com", "temidaradev", "kopuz")
+            .map(|dirs| dirs.cache_dir().join("webview"))
+            .unwrap_or_else(|| std::path::PathBuf::from("./cache/webview"));
+        let _ = std::fs::create_dir_all(&webview_data_dir);
+
         let config = dioxus::desktop::Config::new()
+            .with_data_directory(webview_data_dir)
             .with_window(window)
             .with_custom_protocol("artwork", |_headers, request| {
                 let uri = request.uri();
@@ -405,6 +416,7 @@ fn App() -> Element {
     let cover_cache = use_memo(move || cache_dir().join("covers"));
     #[cfg(not(target_arch = "wasm32"))]
     let _ = std::fs::create_dir_all(cover_cache());
+    let download_queue = use_signal(DownloadQueue::default);
     let mut trigger_rescan = use_signal(|| 0);
     let mut scan_current_file = use_signal(|| Option::<String>::None);
     let current_playing = use_signal(|| 0);
@@ -913,6 +925,7 @@ fn App() -> Element {
 
     provide_context(ctrl);
     provide_context(config);
+    provide_context(download_queue);
 
     hooks::use_player_task(ctrl);
 
@@ -1223,6 +1236,7 @@ fn App() -> Element {
                 persisted_volume: persisted_volume,
                 palette: palette,
             }
+            DownloadOverlay { queue: download_queue }
             Bottombar {
                 library: library,
                 favorites_store,

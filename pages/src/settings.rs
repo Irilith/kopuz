@@ -274,12 +274,15 @@ pub fn Settings(config: Signal<AppConfig>) -> Element {
                                 control: rsx! {
                                     select {
                                         class: "bg-stone-800 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-indigo-500",
-                                        value: config.read().offline_quality.value_str(),
                                         onchange: move |evt| {
                                             config.write().offline_quality = OfflineQuality::from_value_str(&evt.value());
                                         },
                                         for q in OfflineQuality::ALL {
-                                            option { value: q.value_str(), "{q.label()}" }
+                                            option {
+                                                value: q.value_str(),
+                                                selected: *q == config.read().offline_quality,
+                                                "{q.label()}"
+                                            }
                                         }
                                     }
                                 }

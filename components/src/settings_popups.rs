@@ -52,7 +52,6 @@ pub fn AddServerPopup(
                 }
 
                 select {
-                    value: "{service_value}",
                     onchange: move |e| {
                         let service = match e.value().as_str() {
                             "subsonic" => MusicService::Subsonic,
@@ -62,9 +61,21 @@ pub fn AddServerPopup(
                         server_service.set(service);
                     },
                     onkeydown: move |e| e.stop_propagation(),
-                    option { value: "jellyfin", "{i18n::t(\"jellyfin\")}" }
-                    option { value: "subsonic", "{i18n::t(\"subsonic\")}" }
-                    option { value: "custom", "{custom_manual}" }
+                    option {
+                        value: "jellyfin",
+                        selected: server_service() == MusicService::Jellyfin,
+                        "{i18n::t(\"jellyfin\")}"
+                    }
+                    option {
+                        value: "subsonic",
+                        selected: server_service() == MusicService::Subsonic,
+                        "{i18n::t(\"subsonic\")}"
+                    }
+                    option {
+                        value: "custom",
+                        selected: server_service() == MusicService::Custom,
+                        "{custom_manual}"
+                    }
                 }
 
                 div { class: "actions",

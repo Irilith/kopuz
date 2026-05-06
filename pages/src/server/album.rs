@@ -1,3 +1,4 @@
+use crate::server::download_manager::{DownloadQueue, DownloadStatus, queue_downloads};
 use components::dots_menu::{DotsMenu, MenuAction};
 use components::playlist_modal::PlaylistModal;
 use components::selection_bar::SelectionBar;
@@ -184,8 +185,7 @@ pub fn JellyfinAlbumDetails(
     // Multi-selection state
     let mut is_selection_mode = use_signal(|| false);
     let mut selected_tracks = use_signal(|| HashSet::<PathBuf>::new());
-    let mut downloading_tracks = use_signal(|| HashSet::<String>::new());
-    let mut is_album_downloading = use_signal(|| false);
+    let download_queue = use_context::<Signal<DownloadQueue>>();
 
     let mut album_id_sig = use_signal(|| album_jellyfin_id.clone());
     use_effect(move || {
@@ -461,29 +461,40 @@ pub fn JellyfinAlbumDetails(
                             },
                             i { class: "fa-solid fa-play text-xl ml-1" }
                         }
-                        button {
-                            class: "w-12 h-12 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white flex items-center justify-center transition-colors",
-                            title: "Download album for offline playback",
-                            disabled: *is_album_downloading.read(),
-                            onclick: move |_| {
-                                if *is_album_downloading.read() { return; }
-                                let ids: Vec<String> = album_tracks()
-                                    .iter()
-                                    .filter_map(|(t, _)| {
-                                        let s = t.path.to_string_lossy().to_string();
-                                        s.split(':').nth(1).map(|id| id.to_string())
-                                    })
-                                    .collect();
-                                is_album_downloading.set(true);
-                                spawn(async move {
-                                    crate::server::download_tracks_batch(ids, config).await;
-                                    is_album_downloading.set(false);
-                                });
-                            },
-                            if *is_album_downloading.read() {
-                                i { class: "fa-solid fa-spinner fa-spin" }
-                            } else {
-                                i { class: "fa-solid fa-download" }
+                        {
+                            let is_album_dl = {
+                                let q = download_queue.read();
+                                album_tracks().iter().any(|(t, _)| {
+                                    let s = t.path.to_string_lossy();
+                                    let id = s.split(':').nth(1).unwrap_or("");
+                                    q.items.iter().any(|i| i.id == id && matches!(i.status, DownloadStatus::Queued | DownloadStatus::Downloading))
+                                })
+                            };
+                            rsx! {
+                                button {
+                                    class: "w-12 h-12 rounded-full border border-white/20 hover:border-white/40 text-white/70 hover:text-white flex items-center justify-center transition-colors",
+                                    title: "Download album for offline playback",
+                                    disabled: is_album_dl,
+                                    onclick: move |_| {
+                                        let requests: Vec<(String, String, String)> = album_tracks()
+                                            .iter()
+                                            .filter_map(|(t, _)| {
+                                                let s = t.path.to_string_lossy().to_string();
+                                                s.split(':').nth(1).map(|id| (
+                                                    id.to_string(),
+                                                    t.title.clone(),
+                                                    t.artist.clone(),
+                                                ))
+                                            })
+                                            .collect();
+                                        queue_downloads(requests, config, download_queue);
+                                    },
+                                    if is_album_dl {
+                                        i { class: "fa-solid fa-spinner fa-spin" }
+                                    } else {
+                                        i { class: "fa-solid fa-download" }
+                                    }
+                                }
                             }
                         }
                     }
@@ -516,9 +527,10 @@ pub fn JellyfinAlbumDetails(
                             let path_str = track.path.to_string_lossy().to_string();
                             let item_id: String = path_str.split(':').nth(1).unwrap_or("").to_string();
                             let is_downloaded = config.read().offline_tracks.contains_key(&item_id);
-                            let is_downloading = downloading_tracks.read().contains(&item_id);
+                            let is_downloading = download_queue.read().items.iter().any(|i| i.id == item_id && matches!(i.status, DownloadStatus::Queued | DownloadStatus::Downloading));
                             let item_id_dl = item_id.clone();
-                            let item_id_check = item_id.clone();
+                            let track_title = track.title.clone();
+                            let track_artist = track.artist.clone();
 
                             rsx! {
                                 TrackRow {
@@ -564,30 +576,12 @@ pub fn JellyfinAlbumDetails(
                                     on_delete: move |_| active_menu_track.set(None),
                                     hide_delete: true,
                                     on_download: move |_| {
-                                        if downloading_tracks.read().contains(&item_id_check) {
-                                            return;
-                                        }
-                                        downloading_tracks.write().insert(item_id_dl.clone());
                                         active_menu_track.set(None);
-                                        let id = item_id_dl.clone();
-                                        spawn(async move {
-                                            let result = {
-                                                let conf = config.read();
-                                                crate::server::build_download_url(&id, &conf)
-                                            };
-                                            if let Some((url, ext)) = result {
-                                                match crate::server::download_track_to_cache(&id, &url, ext).await {
-                                                    Ok(path) => {
-                                                        config.write().offline_tracks.insert(
-                                                            id.clone(),
-                                                            path.to_string_lossy().into_owned(),
-                                                        );
-                                                    }
-                                                    Err(e) => eprintln!("Download failed: {e}"),
-                                                }
-                                            }
-                                            downloading_tracks.write().remove(&id);
-                                        });
+                                        queue_downloads(
+                                            vec![(item_id_dl.clone(), track_title.clone(), track_artist.clone())],
+                                            config,
+                                            download_queue,
+                                        );
                                     },
                                 }
                             }

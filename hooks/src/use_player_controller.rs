@@ -235,11 +235,27 @@ impl PlayerController {
                 #[cfg(not(target_arch = "wasm32"))]
                 {
                     let offline_path = {
-                        let conf = self.config.read();
-                        conf.offline_tracks
+                        let raw = self.config.read()
+                            .offline_tracks
                             .get(&id)
                             .map(std::path::PathBuf::from)
-                            .filter(|p| p.exists())
+                            .filter(|p| p.exists());
+                        // Evict stale entries saved with the wrong ".audio"/".bin" fallback
+                        if let Some(ref p) = raw {
+                            let bad_ext = matches!(
+                                p.extension().and_then(|e| e.to_str()),
+                                Some("audio") | Some("bin")
+                            );
+                            if bad_ext {
+                                let _ = std::fs::remove_file(p);
+                                self.config.write().offline_tracks.remove(&id);
+                                None
+                            } else {
+                                raw
+                            }
+                        } else {
+                            raw
+                        }
                     };
                     if let Some(local_path) = offline_path {
                         if let Ok((source, hint)) = decoder::open_file(&local_path) {

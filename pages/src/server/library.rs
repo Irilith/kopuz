@@ -1,5 +1,6 @@
 use ::server::jellyfin::JellyfinClient;
 use ::server::subsonic::SubsonicClient;
+use crate::server::download_manager::{DownloadQueue, DownloadStatus, queue_downloads};
 use components::playlist_modal::PlaylistModal;
 use components::selection_bar::SelectionBar;
 use components::stat_card::StatCard;
@@ -39,7 +40,7 @@ pub fn JellyfinLibrary(
     // Multi-selection state
     let mut is_selection_mode = use_signal(|| false);
     let mut selected_tracks = use_signal(|| HashSet::<PathBuf>::new());
-    let mut downloading_tracks = use_signal(|| HashSet::<String>::new());
+    let download_queue = use_context::<Signal<DownloadQueue>>();
 
     let mut fetch_jellyfin = move || {
         has_fetched.set(true);
@@ -188,9 +189,10 @@ pub fn JellyfinLibrary(
             let path_str = track.path.to_string_lossy().to_string();
             let item_id: String = path_str.split(':').nth(1).unwrap_or("").to_string();
             let is_downloaded = config.read().offline_tracks.contains_key(&item_id);
-            let is_downloading = downloading_tracks.read().contains(&item_id);
+            let is_downloading = download_queue.read().items.iter().any(|i| i.id == item_id && matches!(i.status, DownloadStatus::Queued | DownloadStatus::Downloading));
             let item_id_dl = item_id.clone();
-            let item_id_check = item_id.clone();
+            let track_title = track.title.clone();
+            let track_artist = track.artist.clone();
 
             rsx! {
                 div {
@@ -235,30 +237,12 @@ pub fn JellyfinLibrary(
                     on_delete: move |_| active_menu_track.set(None),
                     hide_delete: true,
                     on_download: move |_| {
-                        if downloading_tracks.read().contains(&item_id_check) {
-                            return;
-                        }
-                        downloading_tracks.write().insert(item_id_dl.clone());
                         active_menu_track.set(None);
-                        let id = item_id_dl.clone();
-                        spawn(async move {
-                            let result = {
-                                let conf = config.read();
-                                crate::server::build_download_url(&id, &conf)
-                            };
-                            if let Some((url, ext)) = result {
-                                match crate::server::download_track_to_cache(&id, &url, ext).await {
-                                    Ok(path) => {
-                                        config.write().offline_tracks.insert(
-                                            id.clone(),
-                                            path.to_string_lossy().into_owned(),
-                                        );
-                                    }
-                                    Err(e) => eprintln!("Download failed: {e}"),
-                                }
-                            }
-                            downloading_tracks.write().remove(&id);
-                        });
+                        queue_downloads(
+                            vec![(item_id_dl.clone(), track_title.clone(), track_artist.clone())],
+                            config,
+                            download_queue,
+                        );
                     },
                     on_play: move |_| {
                         queue.set((*queue_arc).clone());

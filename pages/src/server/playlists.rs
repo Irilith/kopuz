@@ -1,5 +1,6 @@
 use ::server::jellyfin::JellyfinClient;
 use ::server::subsonic::SubsonicClient;
+use crate::server::download_manager::{DownloadQueue, DownloadStatus, queue_downloads};
 use config::{AppConfig, MusicService};
 use dioxus::prelude::*;
 use reader::{Library, PlaylistStore};
@@ -14,7 +15,7 @@ pub fn JellyfinPlaylists(
 ) -> Element {
     let mut last_fetch_key = use_signal(|| None::<String>);
     let mut fetch_request_id = use_signal(|| 0u64);
-    let mut downloading_playlists = use_signal(|| std::collections::HashSet::<String>::new());
+    let download_queue = use_context::<Signal<DownloadQueue>>();
 
     use_effect(move || {
         let fetch_context = {
@@ -179,10 +180,22 @@ pub fn JellyfinPlaylists(
                         };
 
                         let playlist_id_nav = playlist.id.clone();
-                        let playlist_id_dl = playlist.id.clone();
-                        let playlist_id_check = playlist.id.clone();
-                        let track_ids = playlist.tracks.clone();
-                        let is_dl = downloading_playlists.read().contains(&playlist.id);
+                        let track_requests_dl: Vec<(String, String, String)> = {
+                            let lib = library.peek();
+                            playlist.tracks.iter().map(|tid| {
+                                let meta = lib.jellyfin_tracks.iter()
+                                    .find(|t| t.path.to_string_lossy().contains(tid.as_str()));
+                                (
+                                    tid.clone(),
+                                    meta.map(|t| t.title.clone()).unwrap_or_default(),
+                                    meta.map(|t| t.artist.clone()).unwrap_or_default(),
+                                )
+                            }).collect()
+                        };
+                        let is_dl = {
+                            let q = download_queue.read();
+                            playlist.tracks.iter().any(|tid| q.items.iter().any(|i| &i.id == tid && matches!(i.status, DownloadStatus::Queued | DownloadStatus::Downloading)))
+                        };
 
                         rsx! {
                             div {
@@ -214,16 +227,7 @@ pub fn JellyfinPlaylists(
                                     disabled: is_dl,
                                     onclick: move |evt| {
                                         evt.stop_propagation();
-                                        if downloading_playlists.read().contains(&playlist_id_check) {
-                                            return;
-                                        }
-                                        downloading_playlists.write().insert(playlist_id_dl.clone());
-                                        let ids = track_ids.clone();
-                                        let pid = playlist_id_dl.clone();
-                                        spawn(async move {
-                                            crate::server::download_tracks_batch(ids, config).await;
-                                            downloading_playlists.write().remove(&pid);
-                                        });
+                                        queue_downloads(track_requests_dl.clone(), config, download_queue);
                                     },
                                     if is_dl {
                                         i { class: "fa-solid fa-spinner fa-spin text-xs" }

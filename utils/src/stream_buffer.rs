@@ -44,6 +44,16 @@ impl StreamBuffer {
 
             match client.get(&url).send().await {
                 Ok(mut response) => {
+                    if !response.status().is_success() {
+                        let (lock, cvar) = &*state_clone;
+                        let mut state = lock.lock().unwrap();
+                        state.error = Some(format!("HTTP {}", response.status()));
+                        state.done = true;
+                        state.prebuffer_ready = true;
+                        cvar.notify_all();
+                        return;
+                    }
+
                     let total_size = response.content_length();
                     {
                         let (lock, cvar) = &*state_clone;
