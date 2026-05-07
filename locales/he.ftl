@@ -1,4 +1,4 @@
-﻿language-name = עברית
+language-name = עברית
 is_rtl = true
 
 settings = הגדרות

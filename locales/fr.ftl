@@ -1,4 +1,4 @@
-﻿language-name = français 
+language-name = français 
 is_rtl = false
 
 settings = Paramètres

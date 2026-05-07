@@ -1,4 +1,4 @@
-﻿language-name = Ελληνικά
+language-name = Ελληνικά
 is_rtl = false
 
 settings = Ρυθμίσεις

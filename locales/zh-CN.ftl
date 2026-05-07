@@ -1,4 +1,4 @@
-﻿language-name = 简体中文
+language-name = 简体中文
 is_rtl = false
 
 settings = 设置

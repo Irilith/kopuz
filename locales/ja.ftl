@@ -1,4 +1,4 @@
-﻿language-name = 日本語
+language-name = 日本語
 is_rtl = false
 
 settings = 設定

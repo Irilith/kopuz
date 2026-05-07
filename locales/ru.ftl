@@ -1,4 +1,4 @@
-﻿language-name = Русский
+language-name = Русский
 is_rtl = false
 
 settings = Настройки

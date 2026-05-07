@@ -1,4 +1,4 @@
-﻿language-name = Română
+language-name = Română
 is_rtl = false
 
 settings = Setări

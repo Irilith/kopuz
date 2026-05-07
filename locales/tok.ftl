@@ -1,4 +1,4 @@
-﻿language-name = toki pona
+language-name = toki pona
 is_rtl = false
 
 settings = nasin ilo

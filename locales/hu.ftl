@@ -1,4 +1,4 @@
-﻿language-name = Magyar
+language-name = Magyar
 is_rtl = false
 
 settings = Beállítások

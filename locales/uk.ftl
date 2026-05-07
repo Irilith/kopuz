@@ -1,4 +1,4 @@
-﻿language-name = Українська
+language-name = Українська
 is_rtl = false
 
 settings = Налаштування

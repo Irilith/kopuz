@@ -1,4 +1,4 @@
-﻿language-name = Türkçe
+language-name = Türkçe
 is_rtl = false
 
 settings = Ayarlar

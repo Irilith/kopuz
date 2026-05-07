@@ -1,4 +1,4 @@
-﻿language-name = Español
+language-name = Español
 is_rtl = false
 
 settings = Ajustes

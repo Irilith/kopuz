@@ -1,4 +1,4 @@
-﻿language-name = العربية
+language-name = العربية
 is_rtl = true
 
 settings = الإعدادات

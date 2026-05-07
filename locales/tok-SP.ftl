@@ -1,4 +1,4 @@
-﻿language-name = sitelen pona
+language-name = sitelen pona
 is_rtl = false
 
 settings = 󱤿󱤎

@@ -1,4 +1,4 @@
-﻿language-name = Polski
+language-name = Polski
 is_rtl = false
 
 settings = Ustawienia

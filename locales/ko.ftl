@@ -1,4 +1,4 @@
-﻿language-name = 한국어
+language-name = 한국어
 is_rtl = false
 
 settings = 설정
