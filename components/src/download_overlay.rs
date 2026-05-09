@@ -108,6 +108,10 @@ pub fn DownloadOverlay(mut queue: Signal<DownloadQueue>) -> Element {
                                     span { class: "text-xs text-slate-500 ml-2 shrink-0",
                                         "{fmt_bytes(item.bytes_done)} / {fmt_bytes(item.bytes_total)}"
                                     }
+                                } else {
+                                    span { class: "text-xs text-slate-500 ml-2 shrink-0",
+                                        "{fmt_bytes(item.bytes_done)}"
+                                    }
                                 }
                             }
                             div { class: "w-full h-1.5 bg-white/10 rounded-full overflow-hidden",
@@ -116,7 +120,7 @@ pub fn DownloadOverlay(mut queue: Signal<DownloadQueue>) -> Element {
                                     style: if item.bytes_total > 0 {
                                         format!("width: {:.1}%", item.bytes_done as f64 / item.bytes_total as f64 * 100.0)
                                     } else {
-                                        "width: 30%; animation: pulse 1.5s ease-in-out infinite;".to_string()
+                                        format!("width: {:.1}%", (item.bytes_done as f64 / 8_000_000.0 * 100.0).max(5.0).min(95.0))
                                     }
                                 }
                             }
