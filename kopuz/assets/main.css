@@ -111,6 +111,19 @@ body {
     z-index: 1000;
 }
 
+/* Keep dots menus above cards but below modal overlays. */
+.dots-menu-root {
+    z-index: 900;
+}
+
+.dots-menu-backdrop {
+    z-index: 880;
+}
+
+.dots-menu-panel {
+    z-index: 910;
+}
+
 .popup {
     background-color: var(--color-neutral-900, #171717);
     border: 1px solid rgba(255, 255, 255, 0.1);

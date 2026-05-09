@@ -1,3 +1,5 @@
+use ::server::jellyfin::JellyfinClient;
+use ::server::subsonic::SubsonicClient;
 use components::dots_menu::{DotsMenu, MenuAction};
 use components::playlist_modal::PlaylistModal;
 use components::selection_bar::SelectionBar;
@@ -5,8 +7,6 @@ use components::track_row::TrackRow;
 use config::{AppConfig, MusicService};
 use dioxus::prelude::*;
 use reader::{Library, PlaylistStore};
-use ::server::jellyfin::JellyfinClient;
-use ::server::subsonic::SubsonicClient;
 use std::collections::HashSet;
 use std::path::PathBuf;
 
@@ -92,8 +92,8 @@ pub fn JellyfinAlbum(
                             rsx! {
                                 div {
                                     key: "{album_id_val}",
-                                    class: "group relative p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors",
-                                    style: "content-visibility: auto; contain-intrinsic-size: 0 230px;",
+                                    class: if is_open { "group relative z-50 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors" } else { "group relative p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors" },
+                                    style: if is_open { "content-visibility: visible; contain: none; contain-intrinsic-size: 0 230px;" } else { "content-visibility: auto; contain-intrinsic-size: 0 230px;" },
                                     oncontextmenu: {
                                         let id = id_for_menu.clone();
                                         move |evt| {

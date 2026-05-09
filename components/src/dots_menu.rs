@@ -52,7 +52,7 @@ pub fn DotsMenu(props: DotsMenuProps) -> Element {
 
     rsx! {
         div {
-            class: "relative",
+            class: if props.is_open { "relative dots-menu-root" } else { "relative" },
 
             button {
                 class: "{base_button_class}",
@@ -70,7 +70,7 @@ pub fn DotsMenu(props: DotsMenuProps) -> Element {
             if props.is_open {
                 // Backdrop to close on outside click
                 div {
-                    class: "fixed inset-0 z-10",
+                    class: "fixed inset-0 dots-menu-backdrop",
                     onclick: move |evt| {
                         evt.stop_propagation();
                         props.on_close.call(());
@@ -79,7 +79,7 @@ pub fn DotsMenu(props: DotsMenuProps) -> Element {
 
                 // Dropdown panel
                 div {
-                    class: "absolute {dropdown_align} top-full mt-1 w-auto bg-neutral-900 border border-white/10 rounded-lg z-20 py-1 shadow-xl",
+                    class: "absolute {dropdown_align} top-full mt-1 w-auto bg-neutral-900 border border-white/10 rounded-lg dots-menu-panel py-1 shadow-xl",
                     onclick: move |evt| evt.stop_propagation(),
 
                     for (idx, action) in props.actions.iter().enumerate() {

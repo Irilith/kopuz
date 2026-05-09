@@ -57,8 +57,8 @@ pub fn LocalAlbum(
                             rsx! {
                                 div {
                                     key: "{album.id}",
-                                    class: "group relative p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors",
-                                    style: "content-visibility: auto; contain-intrinsic-size: 0 230px;",
+                                    class: if is_open { "group relative z-50 p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors" } else { "group relative p-4 bg-white/5 rounded-xl hover:bg-white/10 transition-colors" },
+                                    style: if is_open { "content-visibility: visible; contain: none; contain-intrinsic-size: 0 230px;" } else { "content-visibility: auto; contain-intrinsic-size: 0 230px;" },
                                     oncontextmenu: {
                                         let id = id_for_menu.clone();
                                         move |evt| {
