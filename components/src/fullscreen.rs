@@ -207,7 +207,7 @@ pub fn Fullscreen(
             class: "fixed inset-0 z-50 flex flex-col text-white select-none",
             style: "{background_style}",
 
-            if cfg!(target_os = "linux") {
+            if cfg!(any(target_os = "linux", target_os = "windows")) {
                 div { dir: "ltr", Titlebar {} }
             }
 
