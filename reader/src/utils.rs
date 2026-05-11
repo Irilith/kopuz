@@ -17,6 +17,15 @@ fn detect_image_extension(data: &[u8]) -> &'static str {
     }
 }
 
+fn remove_stale_cover_variants(album_id: &str, cache_dir: &Path, keep_path: &Path) {
+    for extension in ["jpg", "png", "webp", "gif", "bmp", "tif"] {
+        let candidate = cache_dir.join(format!("{album_id}.{extension}"));
+        if candidate != keep_path {
+            let _ = fs::remove_file(candidate);
+        }
+    }
+}
+
 pub fn find_folder_cover(dir: &Path) -> Option<PathBuf> {
     let candidates = ["cover.jpg", "cover.png", "folder.jpg", "album.jpg"];
 
@@ -29,11 +38,17 @@ pub fn find_folder_cover(dir: &Path) -> Option<PathBuf> {
     None
 }
 
-pub fn save_cover(album_id: &str, data: &[u8], cache_dir: &Path) -> std::io::Result<PathBuf> {
+pub fn save_cover(
+    album_id: &str,
+    data: &[u8],
+    extension: Option<&str>,
+    cache_dir: &Path,
+) -> std::io::Result<PathBuf> {
     fs::create_dir_all(cache_dir)?;
-    let extension = detect_image_extension(data);
+    let extension = extension.unwrap_or_else(|| detect_image_extension(data));
     let path = cache_dir.join(format!("{album_id}.{extension}"));
 
+    remove_stale_cover_variants(album_id, cache_dir, &path);
     fs::write(&path, data)?;
     Ok(path)
 }
