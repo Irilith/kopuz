@@ -237,8 +237,14 @@ fn make_thumbnail(raw: &[u8], cache_path: &std::path::Path) -> Option<Vec<u8>> {
     use image::GenericImageView;
     use image::codecs::jpeg::JpegEncoder;
     let img = image::load_from_memory(raw).ok()?;
+    const MAX: u32 = 400;
+    let img = if img.width() > MAX || img.height() > MAX {
+        img.thumbnail(MAX, MAX)
+    } else {
+        img
+    };
     let mut out: Vec<u8> = Vec::new();
-    img.write_with_encoder(JpegEncoder::new_with_quality(&mut out, 100)).ok()?;
+    img.write_with_encoder(JpegEncoder::new_with_quality(&mut out, 75)).ok()?;
     let _ = std::fs::write(cache_path, &out);
     Some(out)
 }
@@ -315,18 +321,17 @@ fn main() {
                 let uri = request.uri().clone();
 
                 tokio::spawn(async move {
-                    let file_path: String = uri
-                        .query()
-                        .and_then(|q| {
-                            q.split('&')
-                                .find_map(|kv| kv.strip_prefix("p="))
-                                .map(|encoded| {
-                                    percent_encoding::percent_decode_str(encoded)
-                                        .decode_utf8_lossy()
-                                        .into_owned()
-                                })
+                    let query = uri.query().unwrap_or_default();
+                    let file_path: String = query
+                        .split('&')
+                        .find_map(|kv| kv.strip_prefix("p="))
+                        .map(|encoded| {
+                            percent_encoding::percent_decode_str(encoded)
+                                .decode_utf8_lossy()
+                                .into_owned()
                         })
                         .unwrap_or_default();
+                    let high_quality = query.split('&').any(|kv| kv == "hq=1");
 
                     if file_path.is_empty() {
                         responder.respond(
@@ -352,13 +357,33 @@ fn main() {
                         file_path
                     };
 
+                    if high_quality {
+                        let mime = if file_path.ends_with(".png") { "image/png" } else { "image/jpeg" };
+                        match tokio::fs::read(&file_path).await {
+                            Ok(b) => responder.respond(
+                                http::Response::builder()
+                                    .header("Content-Type", mime)
+                                    .header("Access-Control-Allow-Origin", "*")
+                                    .header("Cache-Control", "public, max-age=31536000")
+                                    .body(std::borrow::Cow::from(b))
+                                    .unwrap(),
+                            ),
+                            Err(_) => responder.respond(
+                                http::Response::builder()
+                                    .status(404)
+                                    .body(std::borrow::Cow::from(Vec::new()))
+                                    .unwrap(),
+                            ),
+                        }
+                        return;
+                    }
+
                     let thumb_path = thumb_cache_path(&file_path);
 
                     let (bytes, mime) = if thumb_path.exists() {
                         match tokio::fs::read(&thumb_path).await {
                             Ok(b) => (b, "image/jpeg"),
                             Err(_) => {
-                                // thumb corrupted, fall through to re-generate
                                 let _ = std::fs::remove_file(&thumb_path);
                                 match tokio::fs::read(&file_path).await {
                                     Ok(b) => (b, if file_path.ends_with(".png") { "image/png" } else { "image/jpeg" }),

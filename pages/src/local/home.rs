@@ -103,7 +103,7 @@ pub fn LocalHome(
                         rsx! {
                             div { class: "absolute inset-0",
                                 if let Some(url) = utils::format_artwork_url(album.cover_path.as_ref()) {
-                                    img { src: "{url.as_ref()}", class: "w-full h-full object-cover", decoding: "async" }
+                                    img { src: "{url.as_ref()}&hq=1", class: "w-full h-full object-cover", decoding: "async" }
                                 }
                                 div { class: "absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent" }
                             }
