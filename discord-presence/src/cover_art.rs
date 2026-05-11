@@ -3,7 +3,6 @@ use serde::Deserialize;
 const MUSICBRAINZ_API: &str = "https://musicbrainz.org/ws/2";
 const COVER_ART_ARCHIVE: &str = "https://coverartarchive.org";
 const ITUNES: &str = "https://itunes.apple.com/search";
-const DEEZER: &str = "https://api.deezer.com/search/album";
 const USER_AGENT: &str = "Kopuz/0.5.0 (https://github.com/temidaradev/kopuz)";
 
 fn build_client() -> Result<reqwest::Client, reqwest::Error> {
