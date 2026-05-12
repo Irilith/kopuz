@@ -1203,7 +1203,7 @@ impl PlayerController {
         }
 
         self.queue.set(tracks);
-
+        self.shuffle_order.set(Vec::new());
         let start = rand::thread_rng().gen_range(0..queue_len);
 
         self.play_track(start);
