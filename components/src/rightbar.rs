@@ -330,7 +330,7 @@ pub fn Rightbar(
                         }
                     }
                 } else if *active_tab.read() == 1 {
-                    if queue.read().len() <= *current_queue_index.read() + 1 {
+                    if up_next_items.is_empty() {
                         div { class: "text-white/30 text-center py-10 text-sm", "{i18n::t(\"no_more_songs\")}" }
                     } else {
                         div {
