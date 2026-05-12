@@ -45,6 +45,12 @@ pub fn LocalLibrary(
     let album_covers = use_memo(move || (items.album_covers)());
 
     let cover_urls = std::sync::Arc::new(album_covers());
+    let is_empty = all_tracks.is_empty();
+    let all_selected = !is_empty
+        && all_tracks
+            .iter()
+            .all(|track| selected_tracks.read().contains(&track.path));
+    let queue_source = std::sync::Arc::new(queue_tracks());
 
     let scroll_top = *scroll_stat.read();
     let row_height = ITEM_HEIGHT;
@@ -127,6 +133,7 @@ div {
                         },
                         on_select: move |selected| {
                             if selected {
+                                is_selection_mode.set(true);
                                 selected_tracks.write().insert(track_select.clone());
                             } else {
                                 selected_tracks.write().remove(&track_select);
@@ -276,7 +283,31 @@ div {
 
             div {
                 class: "flex items-center justify-between mb-4",
-                h2 { class: "text-xl font-semibold text-white/80", "{i18n::t(\"tracks\")}" }
+                div { class: "flex items-center gap-3",
+                    button {
+                        class: if all_selected {
+                            "w-4 h-4 rounded border border-indigo-400 bg-indigo-500 text-white flex items-center justify-center transition-colors"
+                        } else {
+                            "w-4 h-4 rounded border border-white/20 bg-white/5 hover:border-white/50 transition-colors"
+                        },
+                        aria_label: "Select all tracks",
+                        disabled: is_empty,
+                        onclick: move |_| {
+                            let tracks = displayed_tracks();
+                            if all_selected {
+                                selected_tracks.write().clear();
+                                is_selection_mode.set(false);
+                            } else {
+                                selected_tracks.set(tracks.into_iter().map(|track| track.path).collect());
+                                is_selection_mode.set(true);
+                            }
+                        },
+                        if all_selected {
+                            i { class: "fa-solid fa-check", style: "font-size: 9px;" }
+                        }
+                    }
+                    h2 { class: "text-xl font-semibold text-white/80", "{i18n::t(\"tracks\")}" }
+                }
                 div {
                     class: "flex space-x-1 bg-white/5 border border-white/5 p-1 rounded-lg",
                     button {
