@@ -173,6 +173,19 @@ pub fn JellyfinLibrary(
         (total_height - rendered_height - top_pad).max(0.0)
     };
 
+    let currently_playing_idx: Option<usize> = {
+        let queue = ctrl.queue.read();
+        let q_idx = *ctrl.current_queue_index.read();
+        let qt = queue_tracks();
+        if queue.len() == qt.len()
+            && queue.iter().zip(qt.iter()).all(|(q, t)| q.path == t.path)
+        {
+            Some(q_idx)
+        } else {
+            None
+        }
+    };
+
     let tracks_nodes = all_tracks
         .into_iter()
         .enumerate()
@@ -183,6 +196,7 @@ pub fn JellyfinLibrary(
             let track_add = track.clone();
             let track_queue = track.clone();
             let track_path = track.path.clone();
+            let is_currently_playing = currently_playing_idx == Some(idx);
             let track_select = track.path.clone();
             let queue_arc = std::sync::Arc::clone(&queue_source);
             let track_key = format!("{}-{}", track.path.display(), idx);
@@ -210,6 +224,7 @@ pub fn JellyfinLibrary(
                     track: track.clone(),
                     cover_url: cover_url.clone(),
                     is_menu_open,
+                    is_currently_playing,
                     is_selection_mode: is_selection_mode(),
                     is_selected,
                     is_downloaded,

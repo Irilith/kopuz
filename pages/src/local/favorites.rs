@@ -53,6 +53,18 @@ pub fn LocalFavorites(
     let queue_tracks: Vec<reader::models::Track> =
         displayed_tracks.iter().map(|(t, _)| t.clone()).collect();
 
+    let currently_playing_idx: Option<usize> = {
+        let queue = ctrl.queue.read();
+        let q_idx = *ctrl.current_queue_index.read();
+        if queue.len() == queue_tracks.len()
+            && queue.iter().zip(queue_tracks.iter()).all(|(q, t)| q.path == t.path)
+        {
+            Some(q_idx)
+        } else {
+            None
+        }
+    };
+
     let is_empty = displayed_tracks.is_empty();
 
     let tracks_nodes =
@@ -71,6 +83,7 @@ pub fn LocalFavorites(
                 let track_key = format!("{}-{}", track.path.display(), idx);
                 let is_menu_open = active_menu_track.read().as_ref() == Some(&track.path);
                 let is_selected = selected_tracks.read().contains(&track_path);
+                let is_currently_playing = currently_playing_idx == Some(idx);
 
                 rsx! {
                     div {
@@ -80,6 +93,7 @@ pub fn LocalFavorites(
                             track: track.clone(),
                             cover_url: cover_url.clone(),
                         is_menu_open,
+                        is_currently_playing,
                         is_selection_mode: is_selection_mode(),
                         is_selected,
                         on_long_press: move |_| {

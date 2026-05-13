@@ -332,6 +332,19 @@ pub fn JellyfinAlbumDetails(
         }
     };
 
+    let currently_playing_idx: Option<usize> = {
+        let queue = ctrl.queue.read();
+        let q_idx = *ctrl.current_queue_index.read();
+        let tracks: Vec<_> = album_tracks().into_iter().map(|(t, _)| t).collect();
+        if queue.len() == tracks.len()
+            && queue.iter().zip(tracks.iter()).all(|(q, t)| q.path == t.path)
+        {
+            Some(q_idx)
+        } else {
+            None
+        }
+    };
+
     rsx! {
         div {
             class: "w-full max-w-[1600px] mx-auto",
@@ -662,6 +675,7 @@ pub fn JellyfinAlbumDetails(
                                     track: track.clone(),
                                     cover_url: track_cover_url,
                                     is_menu_open,
+                                    is_currently_playing: currently_playing_idx == Some(idx),
                                     is_selection_mode: is_selection_mode(),
                                     is_selected: selected_tracks.read().contains(&track_path),
                                     is_downloaded,

@@ -34,6 +34,7 @@ pub fn TrackRow(
     on_download: Option<EventHandler<()>>,
     #[props(default = false)] is_downloaded: bool,
     #[props(default = false)] is_downloading: bool,
+    #[props(default = false)] is_currently_playing: bool,
 ) -> Element {
     let add_to_queue_text = i18n::t("add_to_queue").to_string();
     let add_to_playlist_text = i18n::t("add_to_playlist").to_string();
@@ -130,7 +131,9 @@ pub fn TrackRow(
         div {
             class: format!(
                 "flex items-center p-2 rounded-lg hover:bg-white/5 group transition-colors relative select-none {}",
-                if is_selected { "bg-white/10" } else { "" }
+                if is_currently_playing { "bg-[var(--color-primary,#6366f1)]/10" }
+                else if is_selected { "bg-white/10" }
+                else { "" }
             ),
             onclick: move |evt| {
                 evt.stop_propagation();
@@ -189,7 +192,7 @@ pub fn TrackRow(
                 } else {
                     i { class: "fa-solid fa-music text-white/20" }
                 }
-                if is_downloaded {
+                if is_downloaded && !is_currently_playing {
                     div { class: "absolute bottom-0 right-0 w-3 h-3 bg-indigo-500 rounded-tl flex items-center justify-center",
                         i { class: "fa-solid fa-check text-white", style: "font-size: 6px;" }
                     }
@@ -197,7 +200,14 @@ pub fn TrackRow(
             }
 
             div { class: "flex-1 min-w-0 pr-4",
-                p { class: "text-sm font-medium text-white/90 truncate", "{track.title}" }
+                p {
+                    class: if is_currently_playing {
+                        "text-sm font-medium truncate text-[var(--color-primary,#6366f1)]"
+                    } else {
+                        "text-sm font-medium text-white/90 truncate"
+                    },
+                    "{track.title}"
+                }
                 p { class: "text-xs text-slate-500 truncate", "{track.artist}" }
             }
 

@@ -60,6 +60,18 @@ pub fn Showcase(props: ShowcaseProps) -> Element {
     // Read offline_tracks once for the whole render pass so we can cheaply check per-track
     let offline_tracks = config.read().offline_tracks.clone();
 
+    let currently_playing_idx: Option<usize> = {
+        let queue = ctrl.queue.read();
+        let idx = *ctrl.current_queue_index.read();
+        if queue.len() == props.tracks.len()
+            && queue.iter().zip(props.tracks.iter()).all(|(q, t)| q.path == t.path)
+        {
+            Some(idx)
+        } else {
+            None
+        }
+    };
+
     let all_downloaded = !props.tracks.is_empty()
         && props.tracks.iter().all(|t| {
             let p = t.path.to_string_lossy();
@@ -265,6 +277,7 @@ pub fn Showcase(props: ShowcaseProps) -> Element {
                                              is_selected: is_selected,
                                              is_downloaded: is_downloaded,
                                              is_downloading: is_downloading,
+                                             is_currently_playing: currently_playing_idx == Some(idx),
                                              on_select: move |selected| {
                                                 if let Some(handler) = &props.on_select {
                                                     handler.call((idx, selected));

@@ -96,6 +96,19 @@ pub fn LocalLibrary(
         (total_height - rendered_height - top_pad).max(0.0)
     };
 
+    let currently_playing_idx: Option<usize> = {
+        let queue = ctrl.queue.read();
+        let q_idx = *ctrl.current_queue_index.read();
+        let all = displayed_tracks.read();
+        if queue.len() == all.len()
+            && queue.iter().zip(all.iter()).all(|(q, t)| q.path == t.path)
+        {
+            Some(q_idx)
+        } else {
+            None
+        }
+    };
+
     let tracks_nodes = {
         let all_tracks = displayed_tracks.read();
         all_tracks
@@ -110,6 +123,7 @@ pub fn LocalLibrary(
             let track_queue = track.clone();
             let track_delete = track.clone();
             let track_path = track.path.clone();
+            let is_currently_playing = currently_playing_idx == Some(idx);
             let track_select = track.path.clone();
             let cover_urls = std::sync::Arc::clone(&cover_urls);
             let track_key = track.path.display().to_string();
@@ -125,6 +139,7 @@ div {
                         track: track.clone(),
                         cover_url: cover_url.clone(),
                         is_menu_open,
+                        is_currently_playing,
                         is_selection_mode: is_selection_mode(),
                         is_selected,
                         on_long_press: move |_| {

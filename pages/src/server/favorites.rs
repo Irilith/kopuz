@@ -127,6 +127,18 @@ pub fn JellyfinFavorites(
     let queue_tracks: Vec<reader::models::Track> =
         displayed_tracks.iter().map(|(t, _)| t.clone()).collect();
 
+    let currently_playing_idx: Option<usize> = {
+        let queue = ctrl.queue.read();
+        let q_idx = *ctrl.current_queue_index.read();
+        if queue.len() == queue_tracks.len()
+            && queue.iter().zip(queue_tracks.iter()).all(|(q, t)| q.path == t.path)
+        {
+            Some(q_idx)
+        } else {
+            None
+        }
+    };
+
     let is_empty = displayed_tracks.is_empty();
 
     let tracks_nodes = displayed_tracks
@@ -143,6 +155,7 @@ pub fn JellyfinFavorites(
             let track_key = format!("{}-{}", track.path.display(), idx);
             let is_menu_open = active_menu_track.read().as_ref() == Some(&track.path);
             let is_selected = selected_tracks.read().contains(&track_path);
+            let is_currently_playing = currently_playing_idx == Some(idx);
 
             let path_str = track.path.to_string_lossy().to_string();
             let item_id: String = path_str.split(':').nth(1).unwrap_or("").to_string();
@@ -162,6 +175,7 @@ pub fn JellyfinFavorites(
                     track: track.clone(),
                     cover_url: cover_url.clone(),
                     is_menu_open,
+                    is_currently_playing,
                     is_selection_mode: is_selection_mode(),
                     is_selected,
                     is_downloaded,
