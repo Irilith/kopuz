@@ -22,6 +22,7 @@
     --color-emerald-400: oklch(76.5% 0.177 163.223);
     --color-emerald-500: oklch(69.6% 0.17 162.48);
     --color-blue-400: oklch(70.7% 0.165 254.624);
+    --color-indigo-300: oklch(78.5% 0.115 274.713);
     --color-indigo-400: oklch(67.3% 0.182 276.935);
     --color-indigo-500: oklch(58.5% 0.233 277.117);
     --color-indigo-600: oklch(51.1% 0.262 276.966);
@@ -339,9 +340,6 @@
   .left-8 {
     left: calc(var(--spacing) * 8);
   }
-  .z-3 {
-    z-index: 3;
-  }
   .z-10 {
     z-index: 10;
   }
@@ -368,12 +366,6 @@
     @media (width >= 96rem) {
       max-width: 96rem;
     }
-  }
-  .m-6 {
-    margin: calc(var(--spacing) * 6);
-  }
-  .m-9 {
-    margin: calc(var(--spacing) * 9);
   }
   .-mx-2 {
     margin-inline: calc(var(--spacing) * -2);
@@ -422,6 +414,9 @@
   }
   .mt-16 {
     margin-top: calc(var(--spacing) * 16);
+  }
+  .mr-1 {
+    margin-right: calc(var(--spacing) * 1);
   }
   .mr-2 {
     margin-right: calc(var(--spacing) * 2);
@@ -483,9 +478,6 @@
   .block {
     display: block;
   }
-  .contents {
-    display: contents;
-  }
   .flex {
     display: flex;
   }
@@ -494,9 +486,6 @@
   }
   .hidden {
     display: none;
-  }
-  .table {
-    display: table;
   }
   .aspect-square {
     aspect-ratio: 1 / 1;
@@ -787,9 +776,6 @@
   }
   .cursor-row-resize {
     cursor: row-resize;
-  }
-  .resize {
-    resize: both;
   }
   .grid-cols-1 {
     grid-template-columns: repeat(1, minmax(0, 1fr));
@@ -1154,6 +1140,12 @@
   .bg-indigo-500 {
     background-color: var(--color-indigo-500);
   }
+  .bg-indigo-500\/20 {
+    background-color: color-mix(in srgb, oklch(58.5% 0.233 277.117) 20%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-indigo-500) 20%, transparent);
+    }
+  }
   .bg-indigo-600 {
     background-color: var(--color-indigo-600);
   }
@@ -1356,9 +1348,6 @@
   }
   .p-8 {
     padding: calc(var(--spacing) * 8);
-  }
-  .p-9 {
-    padding: calc(var(--spacing) * 9);
   }
   .px-1 {
     padding-inline: calc(var(--spacing) * 1);
@@ -1632,11 +1621,11 @@
   .text-green-400 {
     color: var(--color-green-400);
   }
+  .text-indigo-300 {
+    color: var(--color-indigo-300);
+  }
   .text-indigo-400 {
     color: var(--color-indigo-400);
-  }
-  .text-indigo-500 {
-    color: var(--color-indigo-500);
   }
   .text-orange-500\/80 {
     color: color-mix(in srgb, oklch(70.5% 0.213 47.604) 80%, transparent);
@@ -2143,6 +2132,16 @@
     &:hover {
       @media (hover: hover) {
         background-color: var(--color-indigo-500);
+      }
+    }
+  }
+  .hover\:bg-indigo-500\/30 {
+    &:hover {
+      @media (hover: hover) {
+        background-color: color-mix(in srgb, oklch(58.5% 0.233 277.117) 30%, transparent);
+        @supports (color: color-mix(in lab, red, red)) {
+          background-color: color-mix(in oklab, var(--color-indigo-500) 30%, transparent);
+        }
       }
     }
   }

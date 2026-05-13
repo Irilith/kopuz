@@ -417,6 +417,45 @@ pub enum UiStyle {
     Modern,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum ListenNowStyle {
+    #[default]
+    List,
+    Cards,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct HomeSection {
+    pub key: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+}
+
+pub const HOME_SECTION_KEYS: &[&str] = &[
+    "hero",
+    "continue_listening",
+    "listen_now",
+    "top_artists",
+    "new_releases",
+    "made_for_you",
+    "recently_added",
+    "playlists",
+];
+
+pub fn default_home_sections() -> Vec<HomeSection> {
+    HOME_SECTION_KEYS
+        .iter()
+        .map(|k| HomeSection {
+            key: (*k).to_string(),
+            enabled: true,
+        })
+        .collect()
+}
+
+fn default_recently_played_limit() -> usize {
+    50
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
@@ -479,6 +518,14 @@ pub struct AppConfig {
     pub player_bar_position: PlayerBarPosition,
     #[serde(default)]
     pub ui_style: UiStyle,
+    #[serde(default = "default_home_sections")]
+    pub home_sections: Vec<HomeSection>,
+    #[serde(default)]
+    pub recently_played: Vec<String>,
+    #[serde(default)]
+    pub recently_played_server: Vec<String>,
+    #[serde(default)]
+    pub listen_now_style: ListenNowStyle,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -612,6 +659,42 @@ impl Default for AppConfig {
             offline_tracks: HashMap::new(),
             player_bar_position: PlayerBarPosition::Bottom,
             ui_style: UiStyle::Normal,
+            home_sections: default_home_sections(),
+            recently_played: Vec::new(),
+            recently_played_server: Vec::new(),
+            listen_now_style: ListenNowStyle::default(),
+        }
+    }
+}
+
+impl AppConfig {
+    pub fn migrate_home_sections(&mut self) {
+        let existing: std::collections::HashSet<String> =
+            self.home_sections.iter().map(|s| s.key.clone()).collect();
+        for key in HOME_SECTION_KEYS {
+            if !existing.contains(*key) {
+                self.home_sections.push(HomeSection {
+                    key: (*key).to_string(),
+                    enabled: true,
+                });
+            }
+        }
+        let allowed: std::collections::HashSet<&&str> = HOME_SECTION_KEYS.iter().collect();
+        self.home_sections
+            .retain(|s| allowed.contains(&s.key.as_str()));
+    }
+
+    pub fn push_recent(&mut self, id: String, server: bool) {
+        let list = if server {
+            &mut self.recently_played_server
+        } else {
+            &mut self.recently_played
+        };
+        list.retain(|x| x != &id);
+        list.insert(0, id);
+        let limit = default_recently_played_limit();
+        if list.len() > limit {
+            list.truncate(limit);
         }
     }
 }
@@ -647,7 +730,10 @@ impl AppConfig {
         }
         match fs::read_to_string(path) {
             Ok(data) => match serde_json::from_str::<Self>(&data) {
-                Ok(config) => config,
+                Ok(mut config) => {
+                    config.migrate_home_sections();
+                    config
+                }
                 Err(e) => {
                     eprintln!("Failed to parse config at {:?}: {}", path, e);
                     Self::default()

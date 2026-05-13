@@ -248,7 +248,7 @@ pub fn Settings(config: Signal<AppConfig>) -> Element {
                                         };
                                     },
                                     option { value: "normal", "Normal" }
-                                    option { value: "modern", "Modern" }
+                                    option { value: "modern", "Vaxry" }
                                 }
                             }
                         }

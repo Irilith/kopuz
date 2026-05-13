@@ -1,3 +1,4 @@
+use config::AppConfig;
 use dioxus::prelude::*;
 use hooks::use_player_controller::PlayerController;
 
@@ -6,6 +7,7 @@ use crate::showcase::ShowcaseProps;
 #[component]
 pub fn ShowcaseModern(props: ShowcaseProps) -> Element {
     let mut ctrl = use_context::<PlayerController>();
+    let config = use_context::<Signal<AppConfig>>();
 
     let total_seconds: u64 = props.tracks.iter().map(|t| t.duration).sum();
     let duration_min = total_seconds / 60;
@@ -147,6 +149,28 @@ pub fn ShowcaseModern(props: ShowcaseProps) -> Element {
                         let album = track.album.clone();
                         let row_num = idx + 1;
 
+                        let cover_url: Option<utils::CoverUrl> = {
+                            let path_str = track.path.to_string_lossy();
+                            if path_str.starts_with("jellyfin:") {
+                                let conf = config.read();
+                                conf.server.as_ref().and_then(|s| {
+                                    utils::jellyfin_image::jellyfin_image_url_from_path(
+                                        &path_str,
+                                        &s.url,
+                                        s.access_token.as_deref(),
+                                        64,
+                                        90,
+                                    ).map(|u| std::sync::Arc::from(u.as_str()))
+                                })
+                            } else {
+                                let lib = props.library.read();
+                                lib.albums
+                                    .iter()
+                                    .find(|a| a.id == track.album_id)
+                                    .and_then(|a| utils::format_artwork_url(a.cover_path.as_ref()))
+                            }
+                        };
+
                         rsx! {
                             div {
                                 key: "{track.path.display()}",
@@ -180,7 +204,19 @@ pub fn ShowcaseModern(props: ShowcaseProps) -> Element {
                                     }
                                 }
 
-                                div { class: "flex items-center min-w-0 pr-4",
+                                div { class: "flex items-center min-w-0 pr-4 gap-3",
+                                    div { class: "w-8 h-8 rounded bg-white/5 overflow-hidden shrink-0 flex items-center justify-center",
+                                        if let Some(ref url) = cover_url {
+                                            img {
+                                                src: "{url.as_ref()}",
+                                                class: "w-full h-full object-cover",
+                                                loading: "lazy",
+                                                decoding: "async",
+                                            }
+                                        } else {
+                                            i { class: "fa-solid fa-music", style: "color: rgba(255,255,255,0.2); font-size: 10px;" }
+                                        }
+                                    }
                                     span {
                                         class: "text-sm font-medium truncate",
                                         style: if is_playing {
