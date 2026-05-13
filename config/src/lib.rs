@@ -403,6 +403,20 @@ pub enum TitlebarMode {
     Off,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+pub enum PlayerBarPosition {
+    #[default]
+    Bottom,
+    Top,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+pub enum UiStyle {
+    #[default]
+    Normal,
+    Modern,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
     #[serde(default)]
@@ -461,6 +475,10 @@ pub struct AppConfig {
     pub offline_quality: OfflineQuality,
     #[serde(default)]
     pub offline_tracks: HashMap<String, String>,
+    #[serde(default)]
+    pub player_bar_position: PlayerBarPosition,
+    #[serde(default)]
+    pub ui_style: UiStyle,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -592,6 +610,8 @@ impl Default for AppConfig {
             titlebar_mode: TitlebarMode::Custom,
             offline_quality: OfflineQuality::default(),
             offline_tracks: HashMap::new(),
+            player_bar_position: PlayerBarPosition::Bottom,
+            ui_style: UiStyle::Normal,
         }
     }
 }

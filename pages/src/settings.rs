@@ -233,6 +233,46 @@ pub fn Settings(config: Signal<AppConfig>) -> Element {
                             }
                         }
                         SettingItem {
+                            title: "UI style".to_string(),
+                            control: rsx! {
+                                select {
+                                    class: "bg-stone-800 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-indigo-500",
+                                    value: match config.read().ui_style {
+                                        config::UiStyle::Normal => "normal",
+                                        config::UiStyle::Modern => "modern",
+                                    },
+                                    onchange: move |evt| {
+                                        config.write().ui_style = match evt.value().as_str() {
+                                            "modern" => config::UiStyle::Modern,
+                                            _ => config::UiStyle::Normal,
+                                        };
+                                    },
+                                    option { value: "normal", "Normal" }
+                                    option { value: "modern", "Modern" }
+                                }
+                            }
+                        }
+                        SettingItem {
+                            title: "Player bar position".to_string(),
+                            control: rsx! {
+                                select {
+                                    class: "bg-stone-800 text-white rounded-lg px-3 py-2 text-sm border border-white/10 focus:outline-none focus:border-indigo-500",
+                                    value: match config.read().player_bar_position {
+                                        config::PlayerBarPosition::Bottom => "bottom",
+                                        config::PlayerBarPosition::Top => "top",
+                                    },
+                                    onchange: move |evt| {
+                                        config.write().player_bar_position = match evt.value().as_str() {
+                                            "top" => config::PlayerBarPosition::Top,
+                                            _ => config::PlayerBarPosition::Bottom,
+                                        };
+                                    },
+                                    option { value: "bottom", "Bottom" }
+                                    option { value: "top", "Top" }
+                                }
+                            }
+                        }
+                        SettingItem {
                             title: i18n::t("back_behavior").to_string(),
                             control: rsx! {
                                 BackBehaviorSelector {
