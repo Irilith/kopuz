@@ -61,7 +61,11 @@ pub fn Rightbar(
         let (server_url, server_token, server_user_id) = {
             let conf = config.peek();
             if let Some(server) = &conf.server {
-                (Some(server.url.clone()), server.access_token.clone(), server.user_id.clone())
+                (
+                    Some(server.url.clone()),
+                    server.access_token.clone(),
+                    server.user_id.clone(),
+                )
             } else {
                 (None, None, None)
             }
@@ -89,7 +93,9 @@ pub fn Rightbar(
             .await;
             if *fetch_gen.peek() == fetch_id {
                 let display = result.or_else(|| {
-                    Some(utils::lyrics::Lyrics::Plain(i18n::t("lyrics_not_found").to_string()))
+                    Some(utils::lyrics::Lyrics::Plain(
+                        i18n::t("lyrics_not_found").to_string(),
+                    ))
                 });
                 lyrics.set(Some(display));
             }
@@ -218,27 +224,39 @@ pub fn Rightbar(
             format!("{minutes}:{secs:02}")
         }
     };
+    let q = queue.read();
+    let current_idx = *current_queue_index.read();
     let is_shuffle = *ctrl.shuffle.read();
-    let up_next_items: Vec<(usize, reader::Track)> = {
-        let q = queue.read();
-        let current_idx = *current_queue_index.read();
-        if is_shuffle {
-            ctrl.shuffle_order
-                .read()
-                .iter()
-                .filter_map(|&qi| q.get(qi).map(|t| (qi, t.clone())))
-                .collect()
-        } else {
-            (current_idx + 1..q.len())
-                .filter_map(|qi| q.get(qi).map(|t| (qi, t.clone())))
-                .collect()
-        }
+
+    let (back_items, up_next_items): (Vec<_>, Vec<_>) = if is_shuffle {
+        let order = ctrl.shuffle_order.read();
+        let back = order[..current_idx]
+            .iter()
+            .filter_map(|&qi| q.get(qi).cloned().map(|t| (qi, t)))
+            .collect();
+        let next = order[current_idx + 1..]
+            .iter()
+            .filter_map(|&qi| q.get(qi).cloned().map(|t| (qi, t)))
+            .collect();
+        (back, next)
+    } else {
+        let back = (0..current_idx)
+            .filter_map(|qi| q.get(qi).cloned().map(|t| (qi, t)))
+            .collect();
+        let next = (current_idx + 1..q.len())
+            .filter_map(|qi| q.get(qi).cloned().map(|t| (qi, t)))
+            .collect();
+        (back, next)
     };
+
     let up_next_count = up_next_items.len();
     let up_next_duration: u64 = up_next_items.iter().map(|(_, t)| t.duration).sum();
     let up_next_summary = format!(
         "{} • {}",
-        i18n::t_with("showcase_song_count", &[("count", up_next_count.to_string())]),
+        i18n::t_with(
+            "showcase_song_count",
+            &[("count", up_next_count.to_string())]
+        ),
         format_queue_duration(up_next_duration)
     );
 
@@ -334,19 +352,20 @@ pub fn Rightbar(
                         }
                     }
                 } else if *active_tab.read() == 0 {
-                    if *current_queue_index.read() == 0 {
+                    if current_idx == 0 {
                         div { class: "text-white/30 text-center py-10 text-sm", "{i18n::t(\"no_previous_songs\")}" }
                     }
-                    for i in 0..*current_queue_index.read() {
+                    for (list_pos, (queue_idx, track)) in back_items.iter().enumerate() {
                         {
-                            let track = queue.read()[i].clone();
+                            let queue_idx = *queue_idx;
+                            let track_idx = list_pos;
                             let cover_url = get_track_cover(&track);
                             rsx! {
                                 div {
-                                    key: "{i}",
+                                    key: "{queue_idx}",
                                     class: "flex items-center gap-3 px-2 py-2 hover:bg-white/5 cursor-pointer rounded-lg transition-colors group",
                                     style: "content-visibility: auto; contain-intrinsic-size: 0 56px;",
-                                    ondoubleclick: move |_| play_song_at_index(i),
+                                    ondoubleclick: move |_| play_song_at_index(track_idx),
                                     div {
                                         class: "rounded-md overflow-hidden bg-black/30 flex-shrink-0 shadow-sm",
                                         style: "width: 40px; height: 40px;",
@@ -369,7 +388,7 @@ pub fn Rightbar(
                         }
                     }
                 } else if *active_tab.read() == 1 {
-                    if up_next_items.is_empty() {
+                    if current_idx == q.len() - 1 {
                         div { class: "text-white/30 text-center py-10 text-sm", "{i18n::t(\"no_more_songs\")}" }
                     } else {
                         div {
@@ -380,17 +399,16 @@ pub fn Rightbar(
                     for (list_pos, (queue_idx, track)) in up_next_items.iter().enumerate() {
                         {
                             let queue_idx = *queue_idx;
-                            let track = track.clone();
                             let cover_url = get_track_cover(&track);
-                            let current_idx = *current_queue_index.read();
-                            let can_move_up = !is_shuffle && queue_idx > current_idx + 1;
-                            let can_move_down = !is_shuffle && queue_idx + 1 < queue.read().len();
+                            let track_idx = current_idx + 1 + list_pos;
+                            let can_move_up = track_idx > current_idx + 1;
+                            let can_move_down = track_idx + 1 < q.len();
                             rsx! {
                                 div {
-                                    key: "{list_pos}",
+                                    key: "{queue_idx}",
                                     class: "flex items-center gap-3 px-2 py-2 hover:bg-white/5 cursor-pointer rounded-lg transition-colors group",
                                     style: "content-visibility: auto; contain-intrinsic-size: 0 56px;",
-                                    ondoubleclick: move |_| play_song_at_index(queue_idx),
+                                    ondoubleclick: move |_| play_song_at_index(track_idx),
                                     div {
                                         class: "rounded-md overflow-hidden bg-black/30 flex-shrink-0 shadow-sm",
                                         style: "width: 40px; height: 40px;",
@@ -408,14 +426,12 @@ pub fn Rightbar(
                                         div { class: "text-sm text-white truncate font-medium", "{track.title}" }
                                         div { class: "text-xs text-white/50 truncate group-hover:text-white/70", "{track.artist}" }
                                     }
-                                    if !is_shuffle {
-                                        ReorderButtons {
-                                            can_move_up,
-                                            can_move_down,
-                                            class: "flex flex-col pr-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity".to_string(),
-                                            on_move_up: move |_| move_queue_item(queue_idx, queue_idx - 1),
-                                            on_move_down: move |_| move_queue_item(queue_idx, queue_idx + 1),
-                                        }
+                                    ReorderButtons {
+                                        can_move_up,
+                                        can_move_down,
+                                        class: "flex flex-col pr-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity".to_string(),
+                                        on_move_up: move |_| move_queue_item(track_idx, track_idx - 1),
+                                        on_move_down: move |_| move_queue_item(track_idx, track_idx + 1),
                                     }
                                 }
                             }
