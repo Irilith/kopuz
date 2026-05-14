@@ -228,14 +228,14 @@ pub fn use_player_task(ctrl: PlayerController) {
 
                 let is_playing = *ctrl.is_playing.read();
 
-                if is_playing {
+                {
                     let current_path: Option<String> = {
                         let q = ctrl.queue.read();
                         let idx = *ctrl.current_queue_index.read();
                         q.get(idx).map(|t| t.path.to_string_lossy().to_string())
                     };
                     if let Some(path) = current_path {
-                        if last_recent_path.as_ref() != Some(&path) {
+                        if is_playing && last_recent_path.as_ref() != Some(&path) {
                             last_recent_path = Some(path.clone());
                             let is_server = path.starts_with("jellyfin:") || path.starts_with("subsonic:");
                             let id = if is_server {
