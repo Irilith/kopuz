@@ -77,14 +77,14 @@ pub fn ShowcaseModern(props: ShowcaseProps) -> Element {
                     div { class: "flex items-center gap-2 flex-wrap",
                         if !props.tracks.is_empty() {
                             button {
-                                class: "flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90 active:scale-95",
+                                class: "inline-flex items-center justify-center gap-2 h-9 px-5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90 active:scale-95",
                                 style: "background: var(--color-indigo-500);",
                                 onclick: move |_| props.on_play_all.call(()),
                                 i { class: "fa-solid fa-play text-xs" }
                                 "{i18n::t(\"play\")}"
                             }
                             button {
-                                class: "flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90 active:scale-95",
+                                class: "inline-flex items-center justify-center gap-2 h-9 px-5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90 active:scale-95",
                                 style: if *ctrl.shuffle.read() {
                                     "background: var(--color-indigo-500);"
                                 } else {
@@ -99,7 +99,7 @@ pub fn ShowcaseModern(props: ShowcaseProps) -> Element {
                             }
                             if props.on_download_all.is_some() || props.on_delete_all.is_some() {
                                 button {
-                                    class: "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors hover:bg-white/10",
+                                    class: "inline-flex items-center justify-center h-9 w-9 rounded-full text-sm font-medium transition-colors hover:bg-white/10",
                                     style: "color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.12);",
                                     disabled: props.is_downloading_all,
                                     onclick: move |_| {
