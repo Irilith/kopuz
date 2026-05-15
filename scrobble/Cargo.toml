@@ -4,6 +4,8 @@ version = "0.3.6"
 edition = "2024"
 
 [dependencies]
+md5 = "0.7"
+tracing = "0.1"
 reqwest.workspace = true
 config.workspace = true
 serde.workspace = true
