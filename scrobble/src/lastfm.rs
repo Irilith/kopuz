@@ -157,16 +157,14 @@ pub async fn submit_scrobble(
     form.push(("api_sig", &api_sig));
 
     let url = format!("{}?format=json", API_URL);
-    let resp = client.post(url).form(&form).send().await?;
 
-    let status = resp.status();
-    let body = resp.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        tracing::error!("Scrobble Failed. Status: {}, Body: {}", status, body);
-    }
-
-    Ok(body)
+    let resp = client
+        .post(url)
+        .form(&form)
+        .send()
+        .await?
+        .error_for_status()?;
+    Ok(resp.text().await?)
 }
 
 pub async fn submit_now_playing(
@@ -208,16 +206,14 @@ pub async fn submit_now_playing(
     }
 
     let url = format!("{}?format=json", API_URL);
-    let resp = client.post(url).form(&form).send().await?;
 
-    let status = resp.status();
-    let body = resp.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        tracing::error!("Scrobble Failed. Status: {}, Body: {}", status, body);
-    }
-
-    Ok(body)
+    let resp = client
+        .post(url)
+        .form(&form)
+        .send()
+        .await?
+        .error_for_status()?;
+    Ok(resp.text().await?)
 }
 
 pub fn make_scrobble<'a>(

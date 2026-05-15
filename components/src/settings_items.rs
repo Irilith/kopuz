@@ -336,8 +336,10 @@ pub fn LastFmSettings(
                     placeholder: "{i18n::t(\"lastfm_api_key_placeholder\")}",
                     value: "{api_key_input()}",
                     oninput: move |evt| {
-                        api_key_input.set(evt.value());
-                        on_api_key_save.call(evt.value());
+                        let value = evt.value();
+                        api_key_input.set(value.clone());
+                        on_api_key_save.call(value);
+                        on_session_key_save.call(String::new());
                     },
                     r#type: "password",
                 }
@@ -373,19 +375,24 @@ pub fn LastFmSettings(
                                     tracing::warn!("Failed to open browser: {}", e);
                                     return;
                                 }
-
-                                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-
-                                match lastfm::get_session_key(&api_key, &api_secret, &token).await {
-                                    Ok(session_key) => {
-                                        on_session_key_save.call(session_key);
-
-                                        tracing::info!("Last.fm connected successfully");
-                                    }
-                                    Err(e) => {
-                                        tracing::warn!("Failed to get session key: {}", e);
+                                let mut connected = false;
+                                for _ in 0..30 {
+                                    match lastfm::get_session_key(&api_key, &api_secret, &token).await {
+                                        Ok(session_key) => {
+                                            on_session_key_save.call(session_key);
+                                            tracing::info!("Last.fm connected successfully");
+                                            connected = true;
+                                            break;
+                                        }
+                                        Err(_) => {
+                                            utils::sleep(std::time::Duration::from_secs(2)).await;
+                                        }
                                     }
                                 }
+                            if !connected {
+                                tracing::warn!("Timed out waiting for Last.fm authorization");
+                            }
+
                             }
                             Err(e) => {
                                 tracing::warn!("Failed to get auth token: {}", e);
