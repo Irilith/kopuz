@@ -64,8 +64,8 @@ async fn search_release_mbid(
         .await?;
 
     if !resp.status().is_success() {
-        println!(
-            "[cover_art] MusicBrainz search returned HTTP {}",
+        tracing::warn!(
+            "MusicBrainz search returned HTTP {}",
             resp.status()
         );
         return Ok(None);
@@ -76,14 +76,14 @@ async fn search_release_mbid(
         if let Some(first) = releases.first() {
             let score = first.score.unwrap_or(0);
             if score >= 80 {
-                println!(
-                    "[cover_art] MusicBrainz match: release={} (score={})",
+                tracing::info!(
+                    "MusicBrainz match: release={} (score={})",
                     first.id, score
                 );
                 return Ok(Some(first.id.clone()));
             } else {
-                println!(
-                    "[cover_art] MusicBrainz top result score {} too low (need >= 80)",
+                tracing::info!(
+                    "MusicBrainz top result score {} too low (need >= 80)",
                     score
                 );
             }
@@ -123,7 +123,7 @@ async fn resolve_via_itunes(
         .await?;
 
     if !resp.status().is_success() {
-        println!("[cover_art] iTunes returned HTTP {}", resp.status());
+        tracing::warn!("iTunes returned HTTP {}", resp.status());
         return Ok(None);
     }
 
@@ -135,7 +135,7 @@ async fn resolve_via_itunes(
     if let Some(result) = body.results.first() {
         if let Some(url) = &result.artwork_url_100 {
             let hires = url.replace("100x100bb", "600x600bb");
-            println!("[cover_art] iTunes match -> {}", hires);
+            tracing::info!("iTunes match -> {}", hires);
             return Ok(Some(hires));
         }
     }
@@ -163,14 +163,14 @@ pub async fn resolve_cover_art_url(
             match verify_cover_exists(id).await {
                 Ok(true) => {
                     let url = cover_art_url(id);
-                    println!("[cover_art] Resolved via embedded MBID -> {}", url);
+                    tracing::info!("Resolved via embedded MBID -> {}", url);
                     return Some(url);
                 }
-                Ok(false) => println!(
-                    "[cover_art] Embedded MBID {} has no front cover, falling back",
+                Ok(false) => tracing::warn!(
+                    "Embedded MBID {} has no front cover, falling back",
                     id
                 ),
-                Err(e) => println!("[cover_art] Error verifying MBID {}: {}", id, e),
+                Err(e) => tracing::warn!("Error verifying MBID {}: {}", id, e),
             }
         }
     }
@@ -179,28 +179,28 @@ pub async fn resolve_cover_art_url(
         Ok(Some(release_id)) => match verify_cover_exists(&release_id).await {
             Ok(true) => {
                 let url = cover_art_url(&release_id);
-                println!("[cover_art] Resolved via MusicBrainz search -> {}", url);
+                tracing::info!("Resolved via MusicBrainz search -> {}", url);
                 return Some(url);
             }
-            Ok(false) => println!("[cover_art] Release {} has no front cover", release_id),
-            Err(e) => println!("[cover_art] Error verifying release {}: {}", release_id, e),
+            Ok(false) => tracing::warn!("Release {} has no front cover", release_id),
+            Err(e) => tracing::warn!("Error verifying release {}: {}", release_id, e),
         },
-        Ok(None) => println!(
-            "[cover_art] No MusicBrainz match for artist=\"{}\" album=\"{}\"",
+        Ok(None) => tracing::info!(
+            "No MusicBrainz match for artist=\"{}\" album=\"{}\"",
             artist, album
         ),
-        Err(e) => println!("[cover_art] MusicBrainz search failed: {}", e),
+        Err(e) => tracing::warn!("MusicBrainz search failed: {}", e),
     }
 
     // Fallback: iTunes
     match resolve_via_itunes(artist, album).await {
         Ok(Some(url)) => return Some(url),
-        Ok(None) => println!("[cover_art] No iTunes match"),
-        Err(e) => println!("[cover_art] iTunes error: {}", e),
+        Ok(None) => tracing::info!("No iTunes match"),
+        Err(e) => tracing::warn!("iTunes error: {}", e),
     }
 
-    println!(
-        "[cover_art] All sources exhausted for artist=\"{}\" album=\"{}\"",
+    tracing::info!(
+        "All sources exhausted for artist=\"{}\" album=\"{}\"",
         artist, album
     );
     None

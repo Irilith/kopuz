@@ -55,8 +55,6 @@ pub fn open_file(path: &Path) -> Result<(Box<dyn MediaSource>, Hint), Box<dyn st
 pub fn from_stream(
     mut stream: impl Read + Seek + Send + Sync + 'static,
 ) -> (Box<dyn MediaSource>, Hint) {
-    let mut dummy = [0; 1];
-    let _ = stream.read(&mut dummy);
     let len = stream.seek(std::io::SeekFrom::End(0)).ok();
     let _ = stream.seek(std::io::SeekFrom::Start(0));
 

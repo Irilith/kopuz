@@ -21,7 +21,8 @@ pub struct Track {
     pub album: String,
     pub duration: u64,
     pub khz: u32,
-    pub bitrate: u8,
+    #[serde(default)]
+    pub bitrate: u16,
     pub track_number: Option<u32>,
     pub disc_number: Option<u32>,
     #[serde(default)]

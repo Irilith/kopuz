@@ -666,7 +666,7 @@ fn App() -> Element {
     let current_song_album = use_signal(String::new);
     let current_song_duration = use_signal(|| 0u64);
     let current_song_khz = use_signal(|| 0u32);
-    let current_song_bitrate = use_signal(|| 0u8);
+    let current_song_bitrate = use_signal(|| 0u16);
     let current_song_progress = use_signal(|| 0u64);
     let mut volume = use_signal(|| 1.0f32);
     let mut persisted_volume = use_signal(|| 1.0f32);
@@ -964,6 +964,10 @@ fn App() -> Element {
         }
         let mut was_reachable = true;
         let mut consecutive_failures: u8 = 0;
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(8))
+            .build();
+        let Ok(client) = client else { return };
         loop {
             utils::sleep(std::time::Duration::from_secs(30)).await;
 
@@ -984,23 +988,12 @@ fn App() -> Element {
             };
 
             let ping_url = format!("{}/System/Ping", base_url.trim_end_matches('/'));
-            let reachable = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(8))
-                .build()
-                .ok()
-                .map(|client| async move {
-                    client
-                        .get(&ping_url)
-                        .send()
-                        .await
-                        .map(|r| r.status().as_u16() < 500)
-                        .unwrap_or(false)
-                });
-
-            let reachable = match reachable {
-                Some(fut) => fut.await,
-                None => false,
-            };
+            let reachable = client
+                .get(&ping_url)
+                .send()
+                .await
+                .map(|r| r.status().as_u16() < 500)
+                .unwrap_or(false);
 
             if reachable {
                 consecutive_failures = 0;

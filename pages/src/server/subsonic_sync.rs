@@ -118,7 +118,7 @@ pub async fn sync_server_library(
                         }
 
                         let bitrate_kbps = item.bitrate.unwrap_or(0) / 1000;
-                        let bitrate_u8 = bitrate_kbps.min(255) as u8;
+                        let bitrate_u16 = bitrate_kbps.min(u16::MAX as u32) as u16;
 
                         out_tracks.push(Track {
                             path: PathBuf::from(path_str),
@@ -135,7 +135,7 @@ pub async fn sync_server_library(
                             album: item.album.unwrap_or_default(),
                             duration: item.run_time_ticks.unwrap_or(0) / 10_000_000,
                             khz: item.sample_rate.unwrap_or(0),
-                            bitrate: bitrate_u8,
+                            bitrate: bitrate_u16,
                             track_number: item.index_number,
                             disc_number: item.parent_index_number,
                             musicbrainz_release_id: None,
@@ -297,7 +297,7 @@ pub async fn fetch_subsonic_library(
                     }
                 }
 
-                let bitrate_u8 = song.bit_rate.unwrap_or(0).min(255) as u8;
+                let bitrate_u16 = song.bit_rate.unwrap_or(0).min(u16::MAX as u32) as u16;
 
                 let song_cover_tag = song
                     .cover_art
@@ -319,7 +319,7 @@ pub async fn fetch_subsonic_library(
                     album: song.album.unwrap_or_else(|| album_name.clone()),
                     duration: song.duration.unwrap_or(0),
                     khz: song.sampling_rate.unwrap_or(0),
-                    bitrate: bitrate_u8,
+                    bitrate: bitrate_u16,
                     track_number: song.track,
                     disc_number: song.disc_number,
                     musicbrainz_release_id: None,

@@ -1696,6 +1696,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -5189,11 +5190,11 @@ checksum = "56cf8381505b60ae18a4097f1d0be093287ca3bf4fbb23d36ac5ad3bba335daa"
 name = "reader"
 version = "0.3.6"
 dependencies = [
- "async-recursion",
  "lofty",
  "serde",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -6975,6 +6976,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tracing",
  "urlencoding",
 ]
 

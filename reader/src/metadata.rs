@@ -110,6 +110,14 @@ pub fn extract_metadata(
         .and_then(|t| t.get_string(&ItemKey::MusicBrainzReleaseId))
         .map(|s| s.to_string());
 
+    let sample_rate = properties.sample_rate().unwrap_or(0);
+    let file_size = std::fs::metadata(track_path)
+        .ok()
+        .map(|m| m.len())
+        .unwrap_or(0);
+    let duration_secs = properties.duration().as_secs().max(1);
+    let bitrate_kbps = ((file_size * 8) / duration_secs / 1000).min(u16::MAX as u64) as u16;
+
     Track {
         path: track_path.to_path_buf(),
         album_id: make_album_id(album_title.as_deref().unwrap_or(""), grouping_key),
@@ -117,8 +125,8 @@ pub fn extract_metadata(
         artist,
         artists,
         album: album_title.unwrap_or_else(|| "Unknown Album".to_string()),
-        khz: properties.sample_rate().unwrap_or(0),
-        bitrate: properties.bit_depth().unwrap_or(0),
+        khz: sample_rate,
+        bitrate: bitrate_kbps,
         duration: properties.duration().as_secs()
             + u64::from(properties.duration().subsec_nanos() > 0),
         track_number: tag.and_then(|t| t.track()),

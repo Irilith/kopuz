@@ -71,9 +71,20 @@ pub fn load_themes() -> Vec<Theme> {
                 .and_then(|p| p.parent().map(|d| d.join("assets/themes.json")))
                 .unwrap_or_else(|| std::path::PathBuf::from("assets/themes.json"))
         });
-    let json = std::fs::read_to_string(&path)
-        .unwrap_or_else(|e| panic!("Failed to read themes.json from {}: {e}", path.display()));
-    let file: ThemeFile = serde_json::from_str(&json).expect("themes.json is malformed");
+    let json = match std::fs::read_to_string(&path) {
+        Ok(j) => j,
+        Err(e) => {
+            tracing::warn!("failed to read themes.json from {}: {e}", path.display());
+            return Vec::new();
+        }
+    };
+    let file: ThemeFile = match serde_json::from_str(&json) {
+        Ok(f) => f,
+        Err(e) => {
+            tracing::warn!("themes.json is malformed: {e}");
+            return Vec::new();
+        }
+    };
 
     let mut themes = Vec::new();
 

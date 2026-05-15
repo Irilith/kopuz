@@ -20,7 +20,7 @@ pub fn Fullscreen(
     mut current_song_title: Signal<String>,
     mut current_song_artist: Signal<String>,
     mut current_song_khz: Signal<u32>,
-    mut current_song_bitrate: Signal<u8>,
+    mut current_song_bitrate: Signal<u16>,
     mut current_song_cover_url: Signal<String>,
     mut current_song_album: Signal<String>,
     mut volume: Signal<f32>,
@@ -347,7 +347,7 @@ pub fn Fullscreen(
                     div {
                         class: "flex items-center gap-4 text-xs text-white/50 mb-6 w-full",
                         style: "max-width: 420px;",
-                        span { style: "font-size: 10px;", "{current_song_khz} / {current_song_bitrate}" }
+                        span { style: "font-size: 10px;", "{current_song_khz() / 1000} kHz / {current_song_bitrate} kbps" }
                     }
 
                     div {

@@ -88,11 +88,7 @@ pub fn PlaylistDetail(
                                                 }
                                             }
                                             let bitrate_kbps = item.bitrate.unwrap_or(0) / 1000;
-                                            let bitrate_u8 = if bitrate_kbps > 255 {
-                                                255
-                                            } else {
-                                                bitrate_kbps as u8
-                                            };
+                                            let bitrate_u16 = bitrate_kbps.min(u16::MAX as u32) as u16;
                                             let artist_str = item
                                                 .album_artist
                                                 .clone()
@@ -111,7 +107,7 @@ pub fn PlaylistDetail(
                                                 album: item.album.unwrap_or_default(),
                                                 duration: duration_secs,
                                                 khz: item.sample_rate.unwrap_or(0),
-                                                bitrate: bitrate_u8,
+                                                bitrate: bitrate_u16,
                                                 track_number: item.index_number,
                                                 disc_number: item.parent_index_number,
                                                 musicbrainz_release_id: None,
@@ -176,7 +172,7 @@ pub fn PlaylistDetail(
                                                 album: item.album.unwrap_or_default(),
                                                 duration: item.duration.unwrap_or(0),
                                                 khz: item.sampling_rate.unwrap_or(0),
-                                                bitrate: item.bit_rate.unwrap_or(0).min(255) as u8,
+                                                bitrate: item.bit_rate.unwrap_or(0).min(u16::MAX as u32) as u16,
                                                 track_number: item.track,
                                                 disc_number: item.disc_number,
                                                 musicbrainz_release_id: None,
