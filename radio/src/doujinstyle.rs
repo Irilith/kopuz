@@ -36,6 +36,11 @@ impl RadioMetadataProvider for DoujinstyleProvider {
             let mut last_title = String::new();
 
             loop {
+                if tx.is_closed() {
+                    tracing::info!("[radio] DoujinstyleProvider tx is closed! Exiting loop.");
+                    break;
+                }
+
                 let req = client.get("https://public.radio.co/api/v2/s5ff57669c/track/current")
                     .send()
                     .await;
@@ -57,6 +62,7 @@ impl RadioMetadataProvider for DoujinstyleProvider {
                             };
 
                             if tx.send(meta).is_err() {
+                                tracing::warn!("[radio] DoujinstyleProvider tx send error! Exiting loop.");
                                 break;
                             }
                         }

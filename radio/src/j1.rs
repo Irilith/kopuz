@@ -32,6 +32,11 @@ impl RadioMetadataProvider for J1Provider {
             let mut last_title = String::new();
 
             loop {
+                if tx.is_closed() {
+                    tracing::info!("[radio] J1Provider tx is closed! Exiting loop.");
+                    break;
+                }
+
                 let req = client.get("https://json.j1fm.tokyo/whatweplay.json")
                     .header("Accept", "*/*")
                     .header("Accept-Language", "en-US,en;q=0.9")
@@ -52,6 +57,7 @@ impl RadioMetadataProvider for J1Provider {
                                     cover_url: Some(station_data.image_url.clone()),
                                 };
                                 if tx.send(meta).is_err() {
+                                    tracing::warn!("[radio] J1Provider tx send error! Exiting loop.");
                                     break;
                                 }
                             }

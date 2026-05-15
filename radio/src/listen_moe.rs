@@ -34,7 +34,7 @@ impl RadioMetadataProvider for ListenMoeProvider {
 
                 if let Ok((mut ws_stream, _)) = connect_async(&ws_url).await {
                     let mut heartbeat_interval = 15000;
-                    
+
                     if let Some(Ok(Message::Text(msg))) = ws_stream.next().await {
                         if let Ok(ws_msg) = serde_json::from_str::<WsMessage>(&msg) {
                             if ws_msg.op == 0 {
@@ -48,7 +48,7 @@ impl RadioMetadataProvider for ListenMoeProvider {
                     }
 
                     let (mut write, mut read) = ws_stream.split();
-                    
+
                     let heartbeat_task = tokio::spawn(async move {
                         loop {
                             sleep(Duration::from_millis(heartbeat_interval)).await;
@@ -60,6 +60,7 @@ impl RadioMetadataProvider for ListenMoeProvider {
 
                     while let Some(Ok(Message::Text(msg))) = read.next().await {
                         if tx.is_closed() {
+                            tracing::info!("[radio] ListenMoeProvider: tx is closed! Exiting loop.");
                             break;
                         }
                         if let Ok(ws_msg) = serde_json::from_str::<WsMessage>(&msg) {
@@ -67,7 +68,7 @@ impl RadioMetadataProvider for ListenMoeProvider {
                                 if let Some(d) = ws_msg.d {
                                     if let Some(song) = d.get("song") {
                                         let title = song.get("title").and_then(|v| v.as_str()).unwrap_or("Unknown").to_string();
-                                        
+
                                         let artist = if let Some(artists) = song.get("artists").and_then(|v| v.as_array()) {
                                             let names: Vec<&str> = artists.iter().filter_map(|a| a.get("name").and_then(|n| n.as_str())).collect();
                                             names.join(", ")
@@ -83,11 +84,15 @@ impl RadioMetadataProvider for ListenMoeProvider {
                                             .filter(|s| !s.is_empty())
                                             .map(|s| format!("https://cdn.listen.moe/covers/{}", s));
 
-                                        let _ = tx.send(RadioMetadata {
+                                        let meta = RadioMetadata {
                                             title,
                                             artist,
                                             cover_url,
-                                        });
+                                        };
+                                        if tx.send(meta).is_err() {
+                                            tracing::warn!("[radio] ListenMoeProvider tx send error! Exiting loop.");
+                                            break;
+                                        }
                                     }
                                 }
                             }

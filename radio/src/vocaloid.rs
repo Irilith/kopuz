@@ -34,6 +34,11 @@ impl RadioMetadataProvider for VocaloidProvider {
             let mut last_title = String::new();
 
             loop {
+                if tx.is_closed() {
+                    tracing::info!("[radio] VocaloidProvider tx is closed! Exiting loop.");
+                    break;
+                }
+
                 let req = client.get("https://feed.platform.prod.us-west-2.tunein.com/profiles/s221579/nowPlaying")
                     .send()
                     .await;
@@ -56,6 +61,7 @@ impl RadioMetadataProvider for VocaloidProvider {
                                 };
 
                                 if tx.send(meta).is_err() {
+                                    tracing::warn!("[radio] VocaloidProvider tx send error! Exiting loop.");
                                     break;
                                 }
                             }
