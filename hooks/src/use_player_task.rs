@@ -485,12 +485,17 @@ pub fn use_player_task(ctrl: PlayerController) {
                         continue;
                     }
 
-                    let should_skip = ctrl.player.read().is_playback_complete()
-                        || (duration > 0 && pos.as_secs() >= duration + 5);
+                    let is_radio = duration == u64::MAX;
+                    let should_skip = if is_radio {
+                        false
+                    } else {
+                        ctrl.player.read().is_playback_complete()
+                            || (duration > 0 && pos.as_secs() >= duration.saturating_add(5))
+                    };
 
                     if should_skip && !*ctrl.is_loading.read() && !*ctrl.skip_in_progress.read() {
                         ctrl.skip_in_progress.set(true);
-                        if duration > 0 && last_progress_secs != duration {
+                        if !is_radio && duration > 0 && last_progress_secs != duration {
                             last_progress_secs = duration;
                             ctrl.current_song_progress.set(duration);
                         }

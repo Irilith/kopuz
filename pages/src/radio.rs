@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use hooks::use_player_controller::PlayerController;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct RadioProps {
@@ -14,6 +15,7 @@ struct RadioStream {
 
 #[derive(PartialEq, Clone)]
 struct RadioStation {
+    id: &'static str,
     name: &'static str,
     description: &'static str,
     icon: &'static str,
@@ -24,20 +26,23 @@ struct RadioStation {
 
 const STATIONS: &[RadioStation] = &[
     RadioStation {
+        id: "listen_moe",
         name: "LISTEN.moe",
         description: "Anime and Korean pop music, 24/7.",
         icon: "fa-solid fa-radio",
         gradient_from: "from-pink-600/10",
         gradient_to: "to-purple-900/30",
         streams: &[
-            RadioStream { name: "J-Pop", id: "listen_moe_jpop", icon: "fa-solid fa-music" },
-            RadioStream { name: "K-Pop", id: "listen_moe_kpop", icon: "fa-solid fa-compact-disc" },
+            RadioStream { name: "J-Pop", id: "jpop", icon: "fa-solid fa-music" },
+            RadioStream { name: "K-Pop", id: "kpop", icon: "fa-solid fa-compact-disc" },
         ],
     }
 ];
 
 #[component]
 pub fn Radio(props: RadioProps) -> Element {
+    let mut ctrl = use_context::<PlayerController>();
+
     rsx! {
         div { class: "p-8 w-full h-full flex flex-col overflow-y-auto bg-black/20",
             div { class: "mb-8",
@@ -55,7 +60,7 @@ pub fn Radio(props: RadioProps) -> Element {
                         class: "group relative rounded-2xl overflow-hidden border border-white/5 transition-all duration-300 hover:border-white/20 hover:bg-white/5 cursor-pointer hover:shadow-[0_0_30px_rgba(255,255,255,0.03)]",
                         onclick: move |_| {
                             if !station.streams.is_empty() {
-                                println!("Radio selected (default): {}", station.streams[0].id);
+                                ctrl.play_radio(station.id, station.streams[0].id);
                             }
                         },
                         div { class: "absolute inset-0 bg-gradient-to-br {station.gradient_from} {station.gradient_to} opacity-50 pointer-events-none group-hover:opacity-70 transition-opacity" }
@@ -78,7 +83,7 @@ pub fn Radio(props: RadioProps) -> Element {
                                             class: "px-4 py-2 rounded-xl bg-black/40 hover:bg-white/20 border border-white/10 hover:border-white/40 text-white transition-colors flex items-center gap-2",
                                             onclick: move |evt| {
                                                 evt.stop_propagation();
-                                                println!("Radio selected (specific): {}", stream.id);
+                                                ctrl.play_radio(station.id, stream.id);
                                             },
                                             i { class: "{stream.icon} text-sm text-white/70" }
                                             "{stream.name}"

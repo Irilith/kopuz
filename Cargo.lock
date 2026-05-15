@@ -2714,6 +2714,7 @@ dependencies = [
  "dioxus",
  "discord-presence",
  "player",
+ "radio",
  "rand 0.8.5",
  "reader",
  "reqwest 0.12.28",
