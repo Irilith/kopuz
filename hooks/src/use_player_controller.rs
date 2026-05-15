@@ -661,6 +661,56 @@ impl PlayerController {
                                     }
 
                                     let token_raw = scrobble_cfg.read().musicbrainz_token.clone();
+
+                                    let lastfm_api_key = scrobble_cfg.read().lastfm_api_key.clone();
+                                    let lastfm_api_secret =
+                                        scrobble_cfg.read().lastfm_api_secret.clone();
+                                    let lastfm_session_key =
+                                        scrobble_cfg.read().lastfm_session_key.clone();
+
+                                    if !lastfm_api_key.is_empty() && !lastfm_api_secret.is_empty() {
+                                        let scrobble = scrobble::lastfm::make_scrobble(
+                                            &scrobble_track.artist,
+                                            &scrobble_track.title,
+                                            Some(&scrobble_track.album),
+                                        );
+
+                                        let playing_now = scrobble::lastfm::make_playing_now(
+                                            &scrobble_track.artist,
+                                            &scrobble_track.title,
+                                            Some(&scrobble_track.album),
+                                        );
+
+                                        if let Err(e) = scrobble::lastfm::submit_now_playing(
+                                            &lastfm_api_key,
+                                            &lastfm_api_secret,
+                                            &lastfm_session_key,
+                                            &playing_now,
+                                        )
+                                        .await
+                                        {
+                                            tracing::warn!("Last.fm now playing failed: {}", e);
+                                        }
+
+                                        match scrobble::lastfm::submit_scrobble(
+                                            &lastfm_api_key,
+                                            &lastfm_api_secret,
+                                            &lastfm_session_key,
+                                            &scrobble,
+                                        )
+                                        .await
+                                        {
+                                            Ok(_) => tracing::info!(
+                                                "Last.fm scrobbled: {} - {}",
+                                                scrobble_track.artist,
+                                                scrobble_track.title
+                                            ),
+                                            Err(e) => {
+                                                tracing::warn!("Last.fm scrobble failed: {}", e)
+                                            }
+                                        }
+                                    }
+
                                     if !token_raw.is_empty() {
                                         let auth = if token_raw.contains(' ') {
                                             token_raw.clone()
@@ -879,6 +929,56 @@ impl PlayerController {
                                     }
 
                                     let token_raw = scrobble_cfg.read().musicbrainz_token.clone();
+
+                                    let lastfm_api_key = scrobble_cfg.read().lastfm_api_key.clone();
+                                    let lastfm_api_secret =
+                                        scrobble_cfg.read().lastfm_api_secret.clone();
+                                    let lastfm_session_key =
+                                        scrobble_cfg.read().lastfm_session_key.clone();
+
+                                    if !lastfm_api_key.is_empty() && !lastfm_api_secret.is_empty() {
+                                        let scrobble = scrobble::lastfm::make_scrobble(
+                                            &scrobble_track.artist,
+                                            &scrobble_track.title,
+                                            Some(&scrobble_track.album),
+                                        );
+
+                                        let playing_now = scrobble::lastfm::make_playing_now(
+                                            &scrobble_track.artist,
+                                            &scrobble_track.title,
+                                            Some(&scrobble_track.album),
+                                        );
+
+                                        if let Err(e) = scrobble::lastfm::submit_now_playing(
+                                            &lastfm_api_key,
+                                            &lastfm_api_secret,
+                                            &lastfm_session_key,
+                                            &playing_now,
+                                        )
+                                        .await
+                                        {
+                                            tracing::warn!("Last.fm now playing failed: {}", e);
+                                        }
+
+                                        match scrobble::lastfm::submit_scrobble(
+                                            &lastfm_api_key,
+                                            &lastfm_api_secret,
+                                            &lastfm_session_key,
+                                            &scrobble,
+                                        )
+                                        .await
+                                        {
+                                            Ok(_) => tracing::info!(
+                                                "Last.fm scrobbled: {} - {}",
+                                                scrobble_track.artist,
+                                                scrobble_track.title
+                                            ),
+                                            Err(e) => {
+                                                tracing::warn!("Last.fm scrobble failed: {}", e)
+                                            }
+                                        }
+                                    }
+
                                     if !token_raw.is_empty() {
                                         let auth = if token_raw.contains(' ') {
                                             token_raw.clone()
@@ -1073,6 +1173,54 @@ impl PlayerController {
 
                         spawn(async move {
                             let token_raw = cfg_signal.read().musicbrainz_token.clone();
+
+                            let lastfm_api_key = cfg_signal.read().lastfm_api_key.clone();
+                            let lastfm_api_secret = cfg_signal.read().lastfm_api_secret.clone();
+                            let lastfm_session_key = cfg_signal.read().lastfm_session_key.clone();
+
+                            if !lastfm_api_key.is_empty() && !lastfm_api_secret.is_empty() {
+                                let scrobble = scrobble::lastfm::make_scrobble(
+                                    &scrobble_track.artist,
+                                    &scrobble_track.title,
+                                    Some(&scrobble_track.album),
+                                );
+
+                                let playing_now = scrobble::lastfm::make_playing_now(
+                                    &scrobble_track.artist,
+                                    &scrobble_track.title,
+                                    Some(&scrobble_track.album),
+                                );
+
+                                if let Err(e) = scrobble::lastfm::submit_now_playing(
+                                    &lastfm_api_key,
+                                    &lastfm_api_secret,
+                                    &lastfm_session_key,
+                                    &playing_now,
+                                )
+                                .await
+                                {
+                                    tracing::warn!("Last.fm now playing failed: {}", e);
+                                }
+
+                                match scrobble::lastfm::submit_scrobble(
+                                    &lastfm_api_key,
+                                    &lastfm_api_secret,
+                                    &lastfm_session_key,
+                                    &scrobble,
+                                )
+                                .await
+                                {
+                                    Ok(_) => tracing::info!(
+                                        "Last.fm scrobbled: {} - {}",
+                                        scrobble_track.artist,
+                                        scrobble_track.title
+                                    ),
+                                    Err(e) => {
+                                        tracing::warn!("Last.fm scrobble failed: {}", e)
+                                    }
+                                }
+                            }
+
                             if !token_raw.is_empty() {
                                 let auth_header_value = if token_raw.contains(' ') {
                                     token_raw
