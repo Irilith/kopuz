@@ -1240,6 +1240,11 @@ fn App() -> Element {
     provide_context(config);
     provide_context(download_queue);
     provide_context(scroll_positions);
+    provide_context(components::NavigationController {
+        current_route,
+        selected_artist_name,
+        selected_album_id,
+    });
 
     hooks::use_player_task(ctrl);
 
