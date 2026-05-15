@@ -24,55 +24,32 @@ pub struct VocaloidProvider;
 impl RadioMetadataProvider for VocaloidProvider {
     fn start(&self, _stream_id: &str) -> mpsc::UnboundedReceiver<RadioMetadata> {
         let (tx, rx) = mpsc::unbounded_channel();
-
         tokio::spawn(async move {
             let client = reqwest::Client::builder()
                 .user_agent("Kopuz/0.5.5")
                 .build()
                 .unwrap_or_else(|_| reqwest::Client::new());
 
-            let mut last_title = String::new();
+            let req = client
+                .get("https://feed.platform.prod.us-west-2.tunein.com/profiles/s221579/nowPlaying")
+                .send()
+                .await;
 
-            loop {
-                if tx.is_closed() {
-                    tracing::info!("[radio] VocaloidProvider tx is closed! Exiting loop.");
-                    break;
-                }
-
-                let req = client.get("https://feed.platform.prod.us-west-2.tunein.com/profiles/s221579/nowPlaying")
-                    .send()
-                    .await;
-
-                if let Ok(resp) = req {
-                    if let Ok(json) = resp.json::<VocaloidResponse>().await {
-                        if let Some(primary) = json.primary {
-                            let title = primary.title.unwrap_or_default();
-                            let artist = primary.subtitle.unwrap_or_default();
-                            let cover_url = primary.image;
-
-                            let comparison_str = format!("{} - {}", artist, title);
-                            if comparison_str != last_title {
-                                last_title = comparison_str;
-
-                                let meta = RadioMetadata {
-                                    title,
-                                    artist,
-                                    cover_url,
-                                };
-
-                                if tx.send(meta).is_err() {
-                                    tracing::warn!("[radio] VocaloidProvider tx send error! Exiting loop.");
-                                    break;
-                                }
-                            }
+            if let Ok(resp) = req {
+                if let Ok(json) = resp.json::<VocaloidResponse>().await {
+                    if let Some(primary) = json.primary {
+                        let meta = RadioMetadata {
+                            title: primary.title.unwrap_or_default(),
+                            artist: primary.subtitle.unwrap_or_default(),
+                            cover_url: primary.image,
+                        };
+                        if tx.send(meta).is_err() {
+                            tracing::warn!("[radio] VocaloidProvider tx send error!");
                         }
                     }
                 }
-
-                sleep(Duration::from_secs(7)).await;
             }
         });
-
         rx
     }
 }
