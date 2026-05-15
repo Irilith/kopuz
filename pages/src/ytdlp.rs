@@ -911,8 +911,12 @@ fn OptionsPanel(config: Signal<AppConfig>) -> Element {
                         }
                     }
                     div {
-                        label { class: "text-xs text-slate-500 mb-1 block",
-                            "--js-runtimes"
+                        label { class: "text-xs text-slate-500 mb-1 flex items-center gap-1.5",
+                            span { "--js-runtimes" }
+                            i {
+                                class: "fa-solid fa-circle-info text-[11px] text-slate-400 cursor-help",
+                                title: "{i18n::t(\"ytdlp_js_runtimes_tooltip\")}"
+                            }
                         }
                         input {
                             class: "w-full bg-black/30 border border-white/10 rounded-lg px-3 py-1.5 text-white text-sm placeholder-slate-700 focus:outline-none focus:border-white/30 transition-colors",
