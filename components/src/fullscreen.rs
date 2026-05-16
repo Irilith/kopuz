@@ -284,6 +284,8 @@ pub fn Fullscreen(
         format_queue_duration(up_next_duration)
     );
 
+    let is_radio = *current_song_duration.read() == u64::MAX;
+
     rsx! {
             div {
                 class: "fixed inset-0 z-50 flex flex-col text-white select-none",
@@ -353,7 +355,7 @@ pub fn Fullscreen(
                             class: "flex items-center gap-3",
                             span { class: "text-xs text-white/70 font-mono", style: "width: 50px; text-align: left;", "{fmt_time(display_progress)}" }
                             div {
-                                class: "flex-1 cursor-pointer relative",
+                                class: format!("flex-1 {} relative", if is_radio { "" } else { "cursor-pointer" }),
                                 style: "height: 20px;",
                                 div {
                                     class: "absolute bg-white/20 rounded-full",
@@ -372,7 +374,8 @@ pub fn Fullscreen(
                                     min: "0",
                                     max: "{*current_song_duration.read()}",
                                     value: "{display_progress}",
-                                    class: "absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer",
+                                    class: format!("absolute top-0 left-0 w-full h-full opacity-0 {}", if is_radio { "" } else { "cursor-pointer" }),
+                                    disabled: is_radio,
                                     onchange: move |evt| {
                                         if let Ok(val) = evt.value().parse::<f64>().map(|v| v as u64) {
                                             player.write().seek(std::time::Duration::from_secs(val));
@@ -457,7 +460,7 @@ pub fn Fullscreen(
                         style: "max-width: 420px;",
                         i { class: "fa-solid fa-volume-low text-white/40" }
                         div {
-                            class: "flex-1 cursor-pointer relative",
+                            class: format!("flex-1 {} relative", if is_radio { "" } else { "cursor-pointer" }),
                             style: "height: 20px;",
                             div {
                                 class: "absolute bg-white rounded-full",
@@ -477,7 +480,8 @@ pub fn Fullscreen(
                                 max: "1",
                                 step: "0.01",
                                 value: "{*volume.read()}",
-                                class: "absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer",
+                                disabled: is_radio,
+                                class: format!("absolute top-0 left-0 w-full h-full opacity-0 {}", if is_radio { "" } else { "cursor-pointer" }),
                                 onchange: move |evt| {
                                     if let Ok(val) = evt.value().parse::<f32>() {
                                         persisted_volume.set(val);
