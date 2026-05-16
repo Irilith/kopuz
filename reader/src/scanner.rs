@@ -118,7 +118,7 @@ async fn collect_audio_files(
 }
 
 pub fn is_audio_file(path: &Path) -> bool {
-    let extensions = ["mp3", "flac", "m4a", "wav", "ogg", "opus", "mp4"];
+    let extensions = ["mp3", "flac", "m4a", "wav", "ogg", "opus", "mp4", "mka"];
     path.extension()
         .and_then(|s| s.to_str())
         .is_some_and(|s| extensions.iter().any(|e| s.eq_ignore_ascii_case(e)))

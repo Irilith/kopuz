@@ -6,6 +6,11 @@ use lofty::prelude::*;
 use lofty::tag::ItemKey;
 use lofty::{file::TaggedFile, probe::Probe, properties::FileProperties, tag::Tag};
 use std::path::Path;
+use symphonia::core::codecs::CODEC_TYPE_NULL;
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::MediaSourceStream;
+use symphonia::core::meta::{MetadataOptions, StandardTagKey, Tag as SymphoniaTag, Value};
+use symphonia::core::probe::Hint;
 
 fn slugify_album_key(value: &str) -> String {
     value
@@ -138,7 +143,13 @@ pub fn extract_metadata(
 }
 
 pub fn read(track_path: &Path, cover_cache: &Path, library: &mut Library) -> Option<Track> {
-    let tagged_file = Probe::open(track_path).ok()?.read().ok()?;
+    let tagged_file = match Probe::open(track_path).ok()?.read() {
+        Ok(tagged_file) => tagged_file,
+        Err(_) if is_matroska_audio(track_path) => {
+            return read_with_symphonia(track_path, cover_cache, library);
+        }
+        Err(_) => return None,
+    };
     let properties = tagged_file.properties();
     let tag = tagged_file
         .primary_tag()
@@ -184,5 +195,196 @@ pub fn read(track_path: &Path, cover_cache: &Path, library: &mut Library) -> Opt
     }
 
     library.add_track(track.clone());
+    Some(track)
+}
+
+fn is_matroska_audio(track_path: &Path) -> bool {
+    track_path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("mka"))
+}
+
+fn symphonia_tag_to_string(tag: &SymphoniaTag) -> Option<String> {
+    match &tag.value {
+        Value::String(value) => {
+            let value = value.trim();
+            (!value.is_empty()).then(|| value.to_string())
+        }
+        Value::UnsignedInt(value) => Some(value.to_string()),
+        Value::SignedInt(value) => Some(value.to_string()),
+        Value::Float(value) => Some(value.to_string()),
+        Value::Boolean(value) => Some(value.to_string()),
+        _ => None,
+    }
+}
+
+fn find_symphonia_tag<'a>(
+    tags: &'a [SymphoniaTag],
+    std_key: StandardTagKey,
+    fallback_keys: &[&str],
+) -> Option<&'a SymphoniaTag> {
+    tags.iter()
+        .find(|tag| tag.std_key == Some(std_key))
+        .or_else(|| {
+            tags.iter().find(|tag| {
+                fallback_keys
+                    .iter()
+                    .any(|key| tag.key.eq_ignore_ascii_case(key))
+            })
+        })
+}
+
+fn read_with_symphonia(track_path: &Path, cover_cache: &Path, library: &mut Library) -> Option<Track> {
+    let file = std::fs::File::open(track_path).ok()?;
+    let file_size = file.metadata().ok().map(|m| m.len()).unwrap_or(0);
+
+    let mut hint = Hint::new();
+    if let Some(ext) = track_path.extension().and_then(|ext| ext.to_str()) {
+        hint.with_extension(ext);
+    }
+
+    let mut tags = Vec::new();
+    let mut sample_rate = 0;
+    let mut duration = 0;
+
+    let mss = MediaSourceStream::new(Box::new(file), Default::default());
+    if let Ok(mut probed) = symphonia::default::get_probe().format(
+        &hint,
+        mss,
+        &FormatOptions::default(),
+        &MetadataOptions::default(),
+    ) {
+        if let Some(mut metadata) = probed.metadata.get() {
+            let revision = metadata
+                .skip_to_latest()
+                .map(|revision| revision.clone())
+                .or_else(|| metadata.current().map(|revision| revision.clone()));
+            if let Some(revision) = revision {
+                tags.extend(revision.tags().iter().cloned());
+            }
+        }
+
+        let mut format = probed.format;
+        {
+            let mut metadata = format.metadata();
+            let revision = metadata
+                .skip_to_latest()
+                .map(|revision| revision.clone())
+                .or_else(|| metadata.current().map(|revision| revision.clone()));
+            if let Some(revision) = revision {
+                tags.extend(revision.tags().iter().cloned());
+            }
+        }
+
+        if let Some(track_info) = format
+            .tracks()
+            .iter()
+            .find(|track| track.codec_params.codec != CODEC_TYPE_NULL)
+            .or_else(|| format.tracks().first())
+        {
+            let codec_params = &track_info.codec_params;
+            sample_rate = codec_params.sample_rate.unwrap_or(0);
+            duration = codec_params
+                .time_base
+                .zip(codec_params.n_frames)
+                .map(|(time_base, n_frames)| {
+                    let time = time_base.calc_time(n_frames);
+                    time.seconds + u64::from(time.frac > 0.0)
+                })
+                .unwrap_or(0);
+        }
+    }
+
+    let artist = find_symphonia_tag(&tags, StandardTagKey::Artist, &["ARTIST"])
+        .and_then(symphonia_tag_to_string)
+        .unwrap_or_else(|| "Unknown Artist".to_string());
+
+    let album_title = find_symphonia_tag(&tags, StandardTagKey::Album, &["ALBUM"])
+        .and_then(symphonia_tag_to_string);
+
+    let album_artist = find_symphonia_tag(&tags, StandardTagKey::AlbumArtist, &["ALBUMARTIST"])
+        .and_then(symphonia_tag_to_string)
+        .unwrap_or_else(|| artist.clone());
+
+    let parent_path = track_path.parent().map(|p| p.to_string_lossy());
+    let grouping_key = album_title
+        .as_deref()
+        .and_then(|title| (!title.trim().is_empty()).then_some(album_artist.as_str()))
+        .or(parent_path.as_deref())
+        .unwrap_or(&artist);
+
+    let title = find_symphonia_tag(&tags, StandardTagKey::TrackTitle, &["TITLE"])
+        .and_then(symphonia_tag_to_string)
+        .or_else(|| {
+            track_path
+                .file_stem()
+                .map(|stem| stem.to_string_lossy().into_owned())
+        })
+        .unwrap_or_else(|| "Unknown Title".to_string());
+
+    let bitrate_kbps = if duration > 0 {
+        ((file_size * 8) / duration / 1000).min(u16::MAX as u64) as u16
+    } else {
+        0
+    };
+
+    let track = Track {
+        path: track_path.to_path_buf(),
+        album_id: make_album_id(album_title.as_deref().unwrap_or(""), grouping_key),
+        title,
+        artist: artist.clone(),
+        artists: vec![artist.clone()],
+        album: album_title.unwrap_or_else(|| "Unknown Album".to_string()),
+        khz: sample_rate,
+        bitrate: bitrate_kbps,
+        duration,
+        track_number: find_symphonia_tag(&tags, StandardTagKey::TrackNumber, &["TRACKNUMBER"])
+            .and_then(symphonia_tag_to_string)
+            .and_then(|value| value.parse().ok()),
+        disc_number: find_symphonia_tag(&tags, StandardTagKey::DiscNumber, &["DISCNUMBER"])
+            .and_then(symphonia_tag_to_string)
+            .and_then(|value| value.parse().ok()),
+        musicbrainz_release_id:
+            find_symphonia_tag(&tags, StandardTagKey::MusicBrainzAlbumId, &["MUSICBRAINZ_ALBUMID"])
+                .and_then(symphonia_tag_to_string),
+        playlist_item_id: None,
+    };
+
+    let album_id = track.album_id.clone();
+    let album = library.albums.iter().find(|a| a.id == album_id);
+    let album_exists = album.is_some();
+    let needs_cover = album.and_then(|album| album.cover_path.as_ref()).is_none();
+    let cover = if needs_cover {
+        track_path.parent().and_then(find_folder_cover)
+    } else {
+        None
+    };
+
+    if !album_exists || cover.is_some() {
+        let genre = find_symphonia_tag(&tags, StandardTagKey::Genre, &["GENRE"])
+            .and_then(symphonia_tag_to_string)
+            .unwrap_or_else(|| "Unknown".to_string());
+        let year = find_symphonia_tag(
+            &tags,
+            StandardTagKey::Date,
+            &["DATE", "YEAR"],
+        )
+        .and_then(symphonia_tag_to_string)
+        .and_then(|value| value.get(..4).and_then(|prefix| prefix.parse::<u16>().ok()))
+        .unwrap_or(0);
+
+        library.add_album(Album {
+            id: album_id.clone(),
+            title: track.album.clone(),
+            artist: album_artist,
+            genre,
+            year,
+            cover_path: cover,
+        });
+    }
+
+    library.add_track(track.clone());
+    let _ = cover_cache;
     Some(track)
 }
