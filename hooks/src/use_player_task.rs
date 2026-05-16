@@ -285,6 +285,19 @@ pub fn use_player_task(ctrl: PlayerController) {
                         };
 
                         spawn(async move {
+                            let current_track_path = current_track.path.to_string_lossy().into_owned();
+                            let _ = utils::lyrics::fetch_lyrics(
+                                &current_track.artist,
+                                &current_track.title,
+                                &current_track.album,
+                                current_track.duration,
+                                &current_track_path,
+                                server_url.as_deref(),
+                                server_token.as_deref(),
+                                server_user_id.as_deref(),
+                            )
+                            .await;
+
                             if let Some(next_track) = next_track {
                                 let next_track_path = next_track.path.to_string_lossy().into_owned();
                                 let _ = utils::lyrics::fetch_lyrics(

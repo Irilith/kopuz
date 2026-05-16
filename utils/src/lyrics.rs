@@ -1,7 +1,8 @@
 use percent_encoding::NON_ALPHANUMERIC;
 use serde::Deserialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 
 #[derive(Debug, Deserialize)]
 struct LrcLibResponse {
@@ -23,7 +24,70 @@ pub enum Lyrics {
     Plain(String),
 }
 
-static LYRICS_CACHE: OnceLock<Mutex<HashMap<String, Option<Lyrics>>>> = OnceLock::new();
+const LYRICS_CACHE_CAPACITY: usize = 256;
+
+static LYRICS_CACHE: OnceLock<Mutex<LyricsCache>> = OnceLock::new();
+static LYRICS_INFLIGHT: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+
+struct LyricsCache {
+    entries: HashMap<String, Option<Lyrics>>,
+    order: VecDeque<String>,
+    capacity: usize,
+}
+
+struct LyricsInflightGuard {
+    key: String,
+}
+
+impl Drop for LyricsInflightGuard {
+    fn drop(&mut self) {
+        if let Ok(mut inflight) = lyrics_inflight().lock() {
+            inflight.remove(&self.key);
+        }
+    }
+}
+
+impl LyricsCache {
+    fn new(capacity: usize) -> Self {
+        Self {
+            entries: HashMap::new(),
+            order: VecDeque::new(),
+            capacity,
+        }
+    }
+
+    fn get_cloned(&mut self, key: &str) -> Option<Option<Lyrics>> {
+        let value = self.entries.get(key).cloned()?;
+        self.touch(key);
+        Some(value)
+    }
+
+    fn put(&mut self, key: String, value: Option<Lyrics>) {
+        if self.entries.contains_key(&key) {
+            self.entries.insert(key.clone(), value);
+            self.touch(&key);
+            return;
+        }
+
+        if self.entries.len() >= self.capacity {
+            while let Some(oldest) = self.order.pop_front() {
+                if self.entries.remove(&oldest).is_some() {
+                    break;
+                }
+            }
+        }
+
+        self.order.push_back(key.clone());
+        self.entries.insert(key, value);
+    }
+
+    fn touch(&mut self, key: &str) {
+        if let Some(pos) = self.order.iter().position(|existing| existing == key) {
+            self.order.remove(pos);
+        }
+        self.order.push_back(key.to_string());
+    }
+}
 
 // --- Jellyfin lyrics types ---
 
@@ -120,10 +184,38 @@ pub async fn fetch_lyrics(
     server_user_id: Option<&str>,
 ) -> Option<Lyrics> {
     let cache_key = lyrics_cache_key(artist, title, album, duration, track_path);
-    if let Some(cached) = lyrics_cache().lock().ok().and_then(|cache| cache.get(&cache_key).cloned())
+    if let Some(cached) = lyrics_cache()
+        .lock()
+        .ok()
+        .and_then(|mut cache| cache.get_cloned(&cache_key))
     {
         return cached;
     }
+
+    let _inflight_guard = if try_begin_lyrics_fetch(&cache_key) {
+        Some(LyricsInflightGuard {
+            key: cache_key.clone(),
+        })
+    } else {
+        for _ in 0..100 {
+            crate::sleep(Duration::from_millis(50)).await;
+            if let Some(cached) = lyrics_cache()
+                .lock()
+                .ok()
+                .and_then(|mut cache| cache.get_cloned(&cache_key))
+            {
+                return cached;
+            }
+        }
+
+        if try_begin_lyrics_fetch(&cache_key) {
+            Some(LyricsInflightGuard {
+                key: cache_key.clone(),
+            })
+        } else {
+            None
+        }
+    };
 
     let is_server = track_path.starts_with("jellyfin:")
         || track_path.starts_with("subsonic:")
@@ -133,7 +225,7 @@ pub async fn fetch_lyrics(
     if !is_server {
         if let Some(lyrics) = fetch_local_lrc(track_path).await {
             if let Ok(mut cache) = lyrics_cache().lock() {
-                cache.insert(cache_key, Some(lyrics.clone()));
+                cache.put(cache_key, Some(lyrics.clone()));
             }
             return Some(lyrics);
         }
@@ -147,7 +239,7 @@ pub async fn fetch_lyrics(
             {
                 if let Some(lyrics) = fetch_jellyfin_lyrics(&item_id, server_url, token).await {
                     if let Ok(mut cache) = lyrics_cache().lock() {
-                        cache.insert(cache_key, Some(lyrics.clone()));
+                        cache.put(cache_key, Some(lyrics.clone()));
                     }
                     return Some(lyrics);
                 }
@@ -168,7 +260,7 @@ pub async fn fetch_lyrics(
                         .await
                 {
                     if let Ok(mut cache) = lyrics_cache().lock() {
-                        cache.insert(cache_key, Some(lyrics.clone()));
+                        cache.put(cache_key, Some(lyrics.clone()));
                     }
                     return Some(lyrics);
                 }
@@ -179,7 +271,7 @@ pub async fn fetch_lyrics(
     // 3. lrclib fallback
     let fetched = fetch_from_lrclib(artist, title, album, duration).await;
     if let Ok(mut cache) = lyrics_cache().lock() {
-        cache.insert(cache_key, fetched.clone());
+        cache.put(cache_key, fetched.clone());
     }
     fetched
 }
@@ -195,11 +287,28 @@ pub fn cached_lyrics(
     lyrics_cache()
         .lock()
         .ok()
-        .and_then(|cache| cache.get(&cache_key).cloned())
+        .and_then(|mut cache| cache.get_cloned(&cache_key))
 }
 
-fn lyrics_cache() -> &'static Mutex<HashMap<String, Option<Lyrics>>> {
-    LYRICS_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+fn lyrics_cache() -> &'static Mutex<LyricsCache> {
+    LYRICS_CACHE.get_or_init(|| Mutex::new(LyricsCache::new(LYRICS_CACHE_CAPACITY)))
+}
+
+fn lyrics_inflight() -> &'static Mutex<HashSet<String>> {
+    LYRICS_INFLIGHT.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+fn try_begin_lyrics_fetch(key: &str) -> bool {
+    let Ok(mut inflight) = lyrics_inflight().lock() else {
+        return true;
+    };
+
+    if inflight.contains(key) {
+        false
+    } else {
+        inflight.insert(key.to_string());
+        true
+    }
 }
 
 fn lyrics_cache_key(
