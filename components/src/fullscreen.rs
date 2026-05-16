@@ -460,7 +460,7 @@ pub fn Fullscreen(
                         style: "max-width: 420px;",
                         i { class: "fa-solid fa-volume-low text-white/40" }
                         div {
-                            class: format!("flex-1 {} relative", if is_radio { "" } else { "cursor-pointer" }),
+                            class: "flex-1 cursor-pointer relative",
                             style: "height: 20px;",
                             div {
                                 class: "absolute bg-white rounded-full",
@@ -480,8 +480,7 @@ pub fn Fullscreen(
                                 max: "1",
                                 step: "0.01",
                                 value: "{*volume.read()}",
-                                disabled: is_radio,
-                                class: format!("absolute top-0 left-0 w-full h-full opacity-0 {}", if is_radio { "" } else { "cursor-pointer" }),
+                                class: "absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer",
                                 onchange: move |evt| {
                                     if let Ok(val) = evt.value().parse::<f32>() {
                                         persisted_volume.set(val);
