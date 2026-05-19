@@ -2,6 +2,26 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::fs;
 
+// Maybe host on the website?
+pub const DEFAULT_REGISTRY_URL: &str = "https://raw.githubusercontent.com/Kopuz-org/kopuz/refs/heads/master/radio-registry/index.json";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RegistryEntry {
+    pub url: String,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    #[serde(default)]
+    pub is_default: bool,
+}
+
+pub fn default_radio_registries() -> Vec<RegistryEntry> {
+    vec![RegistryEntry {
+        url: DEFAULT_REGISTRY_URL.to_string(),
+        enabled: true,
+        is_default: true,
+    }]
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct YtdlpOptions {
     #[serde(default = "default_true")]
@@ -552,6 +572,8 @@ pub struct AppConfig {
     pub listen_now_style: ListenNowStyle,
     #[serde(default)]
     pub artist_photo_source: ArtistPhotoSource,
+    #[serde(default = "default_radio_registries")]
+    pub radio_registries: Vec<RegistryEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -704,6 +726,7 @@ impl Default for AppConfig {
             recently_played_server: Vec::new(),
             listen_now_style: ListenNowStyle::default(),
             artist_photo_source: ArtistPhotoSource::AlbumCover,
+            radio_registries: default_radio_registries(),
         }
     }
 }
@@ -737,6 +760,22 @@ impl AppConfig {
         }
         self.sidebar_order.retain(|k| all_keys.contains(k));
     }
+
+    pub fn migrate_registry_paths(&mut self) {
+        // Ensure the default registry entry is always present
+        if !self.radio_registries.iter().any(|r| r.is_default) {
+            self.radio_registries.insert(
+                0,
+                RegistryEntry {
+                    url: DEFAULT_REGISTRY_URL.to_string(),
+                    enabled: true,
+                    is_default: true,
+                },
+            );
+        }
+    }
+
+
 
     pub fn push_recent(&mut self, id: String, server: bool) {
         let list = if server {
@@ -787,6 +826,7 @@ impl AppConfig {
                 Ok(mut config) => {
                     config.migrate_home_sections();
                     config.migrate_sidebar_order();
+                    config.migrate_registry_paths();
                     config
                 }
                 Err(e) => {

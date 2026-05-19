@@ -1019,3 +1019,92 @@ pub fn ChannelModeSelector(current: ChannelMode, on_change: EventHandler<Channel
         }
     }
 }
+
+#[component]
+pub fn RadioRegistryDropdown(
+    registries: Vec<config::RegistryEntry>,
+    on_toggle: EventHandler<usize>,
+    on_add: EventHandler<()>,
+    on_delete: EventHandler<usize>,
+) -> Element {
+    let mut expanded = use_signal(|| false);
+    let is_open = expanded();
+    let chevron = if is_open { "▾" } else { "▸" };
+    let add_text = i18n::t("add");
+    let delete_text = i18n::t("delete");
+    let default_registry = i18n::t("radio_default_registry");
+    rsx! {
+        div { class: "flex flex-col w-full",
+            button {
+                class: "flex items-center justify-between w-full py-2 cursor-pointer group",
+                onclick: move |_| expanded.set(!is_open),
+                div { class: "flex items-center gap-2",
+                    span { class: "text-white font-medium", "Radio" }
+                    span {
+                        class: "text-xs text-slate-500",
+                        {
+                            let enabled_count = registries.iter().filter(|r| r.enabled).count();
+                            let total = registries.len();
+                            format!("{enabled_count}/{total} active")
+                        }
+                    }
+                }
+                span {
+                    class: "text-white/60 group-hover:text-white transition-colors text-sm",
+                    "{chevron}"
+                }
+            }
+            // Expandable panel
+            if is_open {
+                div { class: "flex flex-col gap-2 pl-2 pb-2 border-l border-white/5 ml-1",
+                    if registries.is_empty() {
+                        p { class: "text-xs text-slate-500 italic py-1", "No registries configured" }
+                    }
+                    for (i, entry) in registries.iter().enumerate() {
+                        {
+                            let url_display = if entry.is_default {
+                                default_registry.to_string()
+                            } else {
+                                entry.url.clone()
+                            };
+                            let row_key = format!("{i}-{}", entry.url);
+                            let is_default = entry.is_default;
+                            let is_enabled = entry.enabled;
+                            rsx! {
+                                div { key: "{row_key}",
+                                    class: "flex items-center gap-3 bg-white/5 p-2 rounded w-full",
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: is_enabled,
+                                        onchange: move |_| on_toggle.call(i),
+                                        class: "accent-indigo-500 w-4 h-4 shrink-0 cursor-pointer",
+                                    }
+                                    span {
+                                        class: if is_enabled {
+                                            "text-xs text-slate-300 font-mono truncate flex-1"
+                                        } else {
+                                            "text-xs text-slate-600 font-mono truncate flex-1 line-through"
+                                        },
+                                        "{url_display}"
+                                    }
+                                    if !is_default {
+                                        button {
+                                            onclick: move |_| on_delete.call(i),
+                                            class: "text-red-400 hover:text-red-300 text-xs px-2 py-0.5 rounded transition-colors shrink-0",
+                                            "{delete_text}"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    button {
+                        onclick: move |_| on_add.call(()),
+                        class: "bg-white/10 hover:bg-white/20 px-3 py-1 rounded text-sm text-white transition-colors self-start mt-1",
+                        "{add_text}"
+                    }
+                }
+            }
+        }
+    }
+}

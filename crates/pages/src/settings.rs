@@ -3,9 +3,9 @@ use ::server::provider::ProviderClient;
 use components::settings_items::{
     BackBehaviorSelector, ChannelModeSelector, DiscordPresenceSettings, EqualizerPanel,
     LanguageSelector, LastFmSettings, MultiDirectoryPicker, MusicBrainzSettings, ServerSettings,
-    SettingItem, ThemeSelector, ToggleSetting,
+    SettingItem, ThemeSelector, ToggleSetting, RadioRegistryDropdown,
 };
-use components::settings_popups::{AddServerPopup, LoginPopup};
+use components::settings_popups::{AddServerPopup, LoginPopup, AddRegistryPopup};
 use config::{AppConfig, ArtistPhotoSource, MusicService, OfflineQuality};
 use dioxus::prelude::*;
 use hooks::use_player_controller::PlayerController;
@@ -31,6 +31,31 @@ pub fn Settings(config: Signal<AppConfig>) -> Element {
     let mut error = use_signal(|| Option::<String>::None);
     let mut login_error = use_signal(|| Option::<String>::None);
     let mut is_loading = use_signal(|| false);
+
+    let mut show_add_registry = use_signal(|| false);
+    let mut registry_url = use_signal(|| String::new());
+    let mut registry_error = use_signal(|| Option::<String>::None);
+
+    let handle_add_registry = move |_| {
+        let url = registry_url();
+        if url.is_empty() {
+            registry_error.set(Some("Registry path cannot be empty".to_string()));
+            return;
+        }
+
+        let mut current_config = config.write();
+        if !current_config.radio_registries.iter().any(|r| r.url == url) {
+            current_config.radio_registries.push(config::RegistryEntry {
+                url,
+                enabled: true,
+                is_default: false,
+            });
+        }
+
+        registry_url.set(String::new());
+        registry_error.set(None);
+        show_add_registry.set(false);
+    };
 
     let handle_add_server = move |_| {
         if !server_url().starts_with("http") {
@@ -161,6 +186,25 @@ pub fn Settings(config: Signal<AppConfig>) -> Element {
                                             }
                                         }
                                     }
+                                }
+                            }
+                        }
+
+                        RadioRegistryDropdown {
+                            registries: config.read().radio_registries.clone(),
+                            on_toggle: move |index: usize| {
+                                let mut cfg = config.write();
+                                if let Some(entry) = cfg.radio_registries.get_mut(index) {
+                                    entry.enabled = !entry.enabled;
+                                }
+                            },
+                            on_add: move |_| show_add_registry.set(true),
+                            on_delete: move |index: usize| {
+                                let mut cfg = config.write();
+                                if index < cfg.radio_registries.len()
+                                    && !cfg.radio_registries[index].is_default
+                                {
+                                    cfg.radio_registries.remove(index);
                                 }
                             }
                         }
@@ -519,6 +563,8 @@ pub fn Settings(config: Signal<AppConfig>) -> Element {
                     ThemeEditorPage { config, embedded: true }
                 }
 
+
+
                 if show_add_server() {
                     AddServerPopup {
                         server_name,
@@ -527,6 +573,15 @@ pub fn Settings(config: Signal<AppConfig>) -> Element {
                         error,
                         on_close: move |_| show_add_server.set(false),
                         on_save: handle_add_server
+                    }
+                }
+
+                if show_add_registry() {
+                    AddRegistryPopup {
+                        registry_url,
+                        error: registry_error,
+                        on_close: move |_| show_add_registry.set(false),
+                        on_save: handle_add_registry
                     }
                 }
 
