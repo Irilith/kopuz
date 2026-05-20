@@ -383,3 +383,8 @@ update_banner_message = Kopuz { $version }을(를) 사용할 수 있습니다.
 view_release = 릴리스 보기
 
 volume_scroll_step = 볼륨 스크롤 단계
+
+# Radio Registries
+radio_registry_url_placeholder = index.json의 URL 또는 로컬 경로
+add_radio_registry = 라디오 레지스트리 추가
+radio_default_registry = 기본 레지스트리

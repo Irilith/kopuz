@@ -383,3 +383,8 @@ update_banner_message = Το Kopuz { $version } είναι διαθέσιμο.
 view_release = Προβολή έκδοσης
 
 volume_scroll_step = Βήμα κύλισης έντασης
+
+# Radio Registries
+radio_registry_url_placeholder = Διεύθυνση URL ή τοπική διαδρομή για το index.json
+add_radio_registry = Προσθήκη Μητρώου Ραδιοφώνου
+radio_default_registry = Προεπιλεγμένο Μητρώο

@@ -382,3 +382,8 @@ update_banner_message = Kopuz { $version } tersedia.
 view_release = Lihat rilis
 
 volume_scroll_step = Langkah Gulir Volume
+
+# Radio Registries
+radio_registry_url_placeholder = URL atau jalur lokal ke index.json
+add_radio_registry = Tambah Registri Radio
+radio_default_registry = Registri Default

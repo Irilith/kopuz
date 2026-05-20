@@ -383,3 +383,8 @@ update_banner_message = Доступна версия Kopuz { $version }.
 view_release = Открыть релиз
 
 volume_scroll_step = Шаг прокрутки громкости
+
+# Radio Registries
+radio_registry_url_placeholder = URL или локальный путь к index.json
+add_radio_registry = Добавить Реестр Радио
+radio_default_registry = Реестр по Умолчанию

@@ -383,3 +383,8 @@ update_banner_message = A Kopuz { $version } elérhető.
 view_release = Kiadás megtekintése
 
 volume_scroll_step = Hangerő görgetési lépés
+
+# Radio Registries
+radio_registry_url_placeholder = URL vagy helyi útvonal az index.json-hoz
+add_radio_registry = Rádió Regiszter Hozzáadása
+radio_default_registry = Alapértelmezett Regiszter

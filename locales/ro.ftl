@@ -383,3 +383,8 @@ update_banner_message = Kopuz { $version } este disponibil.
 view_release = Vezi lansarea
 
 volume_scroll_step = Pas de derulare a volumului
+
+# Radio Registries
+radio_registry_url_placeholder = URL sau cale locală către index.json
+add_radio_registry = Adaugă Registru Radio
+radio_default_registry = Registru Implicit

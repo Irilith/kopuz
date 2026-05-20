@@ -383,3 +383,8 @@ update_banner_message = ‏Kopuz { $version } זמין.
 view_release = הצג גרסה
 
 volume_scroll_step = צעד גלילת עוצמה
+
+# Radio Registries
+radio_registry_url_placeholder = כתובת URL או נתיב מקומי אל index.json
+add_radio_registry = הוסף רשם רדיו
+radio_default_registry = רשם ברירת מחדל

@@ -384,3 +384,8 @@ update_banner_message = Kopuz { $version } li lon.
 view_release = o lukin e lipu pi sin namako
 
 volume_scroll_step = nasin tawa kalama
+
+# Radio Registries
+radio_registry_url_placeholder = URL anu nasin tawa lipu index.json
+add_radio_registry = o pana e lipu kalama ilo
+radio_default_registry = lipu pi nanpa wan

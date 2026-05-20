@@ -389,3 +389,8 @@ update_banner_message = Kopuz { $version } が利用可能です。
 view_release = リリースを見る
 
 volume_scroll_step = 音量スクロールステップ
+
+# Radio Registries
+radio_registry_url_placeholder = index.json への URL またはローカルパス
+add_radio_registry = ラジオレジストリを追加
+radio_default_registry = デフォルトレジストリ

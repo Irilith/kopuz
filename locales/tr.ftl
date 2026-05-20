@@ -383,3 +383,8 @@ update_banner_message = Kopuz { $version } kullanılabilir.
 view_release = Sürümü görüntüle
 
 volume_scroll_step = Ses kaydırma adımı
+
+# Radio Registries
+radio_registry_url_placeholder = index.json için URL veya yerel yol
+add_radio_registry = Radyo Kaydı Ekle
+radio_default_registry = Varsayılan Kayıt

@@ -389,3 +389,8 @@ update_banner_message = إصدار Kopuz { $version } متوفر.
 view_release = عرض الإصدار
 
 volume_scroll_step = خطوة تمرير الصوت
+
+# Radio Registries
+radio_registry_url_placeholder = مسار محلي أو رابط لـ index.json
+add_radio_registry = إضافة سجل راديو
+radio_default_registry = السجل الافتراضي

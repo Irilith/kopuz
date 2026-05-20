@@ -383,3 +383,8 @@ update_banner_message = Kopuz { $version } 现已可用。
 view_release = 查看发行版
 
 volume_scroll_step = 音量滚动步长
+
+# Radio Registries
+radio_registry_url_placeholder = 指向 index.json 的 URL 或本地路径
+add_radio_registry = 添加电台注册表
+radio_default_registry = 默认注册表

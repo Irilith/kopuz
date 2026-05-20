@@ -373,3 +373,8 @@ radio_doujinstyle_desc = Doujin music, video game soundtracks, and more.
 radio_vocaloid_desc = Vocaloid Hits from Japan. We play it all!
 radio_asiadreamradio_desc = The Heart of J-Pop Music - J-Pop, J-Rock, J-HipHop, J-Jazz, Classics.
 radio_live_stream = Live Stream
+
+# Radio Registries
+radio_registry_url_placeholder = URL or local path to index.json
+add_radio_registry = Add Radio Registry
+radio_default_registry = Default Registry

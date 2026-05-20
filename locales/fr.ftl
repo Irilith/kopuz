@@ -384,3 +384,8 @@ update_banner_message = Kopuz { $version } est disponible.
 view_release = Voir la version
 
 volume_scroll_step = Pas de défilement du volume
+
+# Radio Registries
+radio_registry_url_placeholder = URL ou chemin local vers index.json
+add_radio_registry = Ajouter un Registre de Radio
+radio_default_registry = Registre par Défaut
