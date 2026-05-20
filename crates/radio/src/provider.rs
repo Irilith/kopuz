@@ -122,6 +122,63 @@ async fn start_rest_metadata(
     }
 }
 
+fn process_ws_message(json: &Value, def: &WebSocketSourceDef, station_name: &str) -> Option<RadioMetadata> {
+    let mut matches = true;
+    if let Some(filter) = &def.message_filter {
+        if let Some(op) = extract_value(json, &filter.op_field).and_then(|v| v.as_u64()) {
+            if op != filter.op_value {
+                matches = false;
+            }
+        } else {
+            matches = false;
+        }
+
+        if let (Some(tf), Some(tv)) = (&filter.type_field, &filter.type_value) {
+            if let Some(t) = extract_value(json, tf).and_then(|v| v.as_str()) {
+                if t != tv {
+                    matches = false;
+                }
+            } else {
+                matches = false;
+            }
+        }
+    }
+
+    if matches {
+        let data_root = if let Some(filter) = &def.message_filter {
+            if let Some(df) = &filter.data_field {
+                extract_value(json, df).unwrap_or(json)
+            } else {
+                json
+            }
+        } else {
+            json
+        };
+
+        let title = extract_title(data_root, &def.mapping);
+        let artist = extract_artist(data_root, &def.mapping);
+        let cover_url = extract_artwork(data_root, &def.mapping);
+
+        Some(RadioMetadata { station: station_name.to_string(), title, artist, cover_url })
+    } else {
+        None
+    }
+}
+
+fn check_heartbeat(json: &Value, def: &WebSocketSourceDef, current_interval: u64) -> Option<u64> {
+    if let Some(hb) = &def.heartbeat {
+        if let Some(val) = extract_value(json, &hb.interval_field) {
+            if let Some(ms) = val.as_u64() {
+                if ms > 0 && ms != current_interval {
+                    return Some(ms);
+                }
+            }
+        }
+    }
+    None
+}
+
+// Keep in minds that this function wrote entirely for listen.moe, haven't tested with other providers that use websocket.
 async fn start_ws_metadata(
     def: WebSocketSourceDef,
     stream_id: String,
@@ -159,55 +216,14 @@ async fn start_ws_metadata(
                             match msg {
                                 Some(Ok(tokio_tungstenite::tungstenite::Message::Text(text))) => {
                                     if let Ok(json) = serde_json::from_str::<Value>(&text) {
-                                        if let Some(hb) = &def.heartbeat {
-                                            if let Some(val) = extract_value(&json, &hb.interval_field) {
-                                                if let Some(ms) = val.as_u64() {
-                                                    if ms > 0 && ms != heartbeat_interval_ms {
-                                                        heartbeat_interval_ms = ms;
-                                                        heartbeat_timer = time::interval(Duration::from_millis(heartbeat_interval_ms));
-                                                        heartbeat_timer.tick().await;
-                                                    }
-                                                }
-                                            }
+                                        if let Some(new_interval) = check_heartbeat(&json, &def, heartbeat_interval_ms) {
+                                            heartbeat_interval_ms = new_interval;
+                                            heartbeat_timer = time::interval(Duration::from_millis(heartbeat_interval_ms));
+                                            heartbeat_timer.tick().await;
                                         }
 
-                                        let mut matches = true;
-                                        if let Some(filter) = &def.message_filter {
-                                            if let Some(op) = extract_value(&json, &filter.op_field).and_then(|v| v.as_u64()) {
-                                                if op != filter.op_value {
-                                                    matches = false;
-                                                }
-                                            } else {
-                                                matches = false;
-                                            }
-
-                                            if let (Some(tf), Some(tv)) = (&filter.type_field, &filter.type_value) {
-                                                if let Some(t) = extract_value(&json, tf).and_then(|v| v.as_str()) {
-                                                    if t != tv {
-                                                        matches = false;
-                                                    }
-                                                } else {
-                                                    matches = false;
-                                                }
-                                            }
-                                        }
-
-                                        if matches {
-                                            let data_root = if let Some(filter) = &def.message_filter {
-                                                if let Some(df) = &filter.data_field {
-                                                    extract_value(&json, df).unwrap_or(&json)
-                                                } else {
-                                                    &json
-                                                }
-                                            } else {
-                                                &json
-                                            };
-
-                                            let title = extract_title(data_root, &def.mapping);
-                                            let artist = extract_artist(data_root, &def.mapping);
-                                            let cover_url = extract_artwork(data_root, &def.mapping);
-
-                                            if tx.send(RadioMetadata { station: station_name.clone(), title, artist, cover_url }).is_err() {
+                                        if let Some(meta) = process_ws_message(&json, &def, &station_name) {
+                                            if tx.send(meta).is_err() {
                                                 return;
                                             }
                                         }

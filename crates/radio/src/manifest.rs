@@ -47,7 +47,7 @@ pub enum MetadataSourceDef {
     Rest(RestSourceDef),
 }
 
-// Keep in minds that this function wrote entirely for listen.moe, haven't tested with other providers that use websocket.
+// Keep in minds that this wrote entirely for listen.moe, haven't tested with other providers that use websocket.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WebSocketSourceDef {
     /// URL template, e.g. "wss://listen.moe/{stream_key}/gateway_v2"

@@ -35,6 +35,53 @@ pub enum RegistryError {
     InvalidUrl(String),
 }
 
+async fn fetch_content(url_or_path: &str, base_url_or_dir: Option<&str>) -> Result<(String, String), RegistryError> {
+    let is_http = |s: &str| s.starts_with("http://") || s.starts_with("https://");
+
+    if is_http(url_or_path) || base_url_or_dir.map_or(false, is_http) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let url = if is_http(url_or_path) {
+                url_or_path.to_string()
+            } else {
+                format!("{}/{}", base_url_or_dir.unwrap(), url_or_path.trim_start_matches("./"))
+            };
+
+            let text = reqwest::get(&url)
+                .await
+                .map_err(|e| RegistryError::Network(e.to_string()))?
+                .text()
+                .await
+                .map_err(|e| RegistryError::Network(e.to_string()))?;
+
+            let new_base = if let Some(idx) = url.rfind('/') {
+                url[..idx].to_string()
+            } else {
+                url
+            };
+
+            Ok((text, new_base))
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            Err(RegistryError::Network("HTTP fetching not supported on WASM yet".into()))
+        }
+    } else {
+        let path = if let Some(base) = base_url_or_dir {
+            let mut p = PathBuf::from(base);
+            p.push(url_or_path.trim_start_matches("./"));
+            p
+        } else {
+            PathBuf::from(url_or_path)
+        };
+
+        let text = std::fs::read_to_string(&path)?;
+        let parent = path.parent().unwrap_or(Path::new("")).to_string_lossy().to_string();
+        
+        Ok((text, parent))
+    }
+}
+
 impl StationRegistry {
     pub fn new() -> Self {
         Self {
@@ -43,85 +90,23 @@ impl StationRegistry {
     }
 
     pub async fn import_registry(&mut self, url_or_path: &str) -> Result<(), RegistryError> {
-        let (index_content, base_url_or_dir) = if url_or_path.starts_with("http://") || url_or_path.starts_with("https://") {
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                let resp = reqwest::get(url_or_path)
-                    .await
-                    .map_err(|e| RegistryError::Network(e.to_string()))?;
-                let text = resp
-                    .text()
-                    .await
-                    .map_err(|e| RegistryError::Network(e.to_string()))?;
-
-                // Determine base URL by removing the filename
-                let base_url = if let Some(idx) = url_or_path.rfind('/') {
-                    &url_or_path[..idx]
-                } else {
-                    url_or_path
-                };
-                (text, base_url.to_string())
-            }
-            #[cfg(target_arch = "wasm32")]
-            {
-                return Err(RegistryError::Network("HTTP fetching not supported on WASM yet".into()));
-            }
-        } else {
-            // Local file path
-            let path = Path::new(url_or_path);
-            let text = std::fs::read_to_string(path)?;
-            let parent = path.parent().unwrap_or(Path::new("")).to_string_lossy().to_string();
-            (text, parent)
-        };
-
+        let (index_content, base_url_or_dir) = fetch_content(url_or_path, None).await?;
         let index: RegistryIndex = serde_json::from_str(&index_content)?;
 
         for station_ref in index.stations {
-            let manifest_content = if station_ref.manifest_url.starts_with("http://") || station_ref.manifest_url.starts_with("https://") {
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    reqwest::get(&station_ref.manifest_url)
-                        .await
-                        .map_err(|e| RegistryError::Network(e.to_string()))?
-                        .text()
-                        .await
-                        .map_err(|e| RegistryError::Network(e.to_string()))?
+            match fetch_content(&station_ref.manifest_url, Some(&base_url_or_dir)).await {
+                Ok((manifest_content, _)) => {
+                    if let Ok(manifest) = serde_json::from_str::<StationManifest>(&manifest_content) {
+                        if manifest.validate().is_ok() {
+                            self.stations.insert(manifest.id.clone(), manifest);
+                        } else {
+                            tracing::warn!("Imported manifest {} failed validation", station_ref.id);
+                        }
+                    } else {
+                        tracing::warn!("Failed to parse manifest for {}", station_ref.id);
+                    }
                 }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    String::new()
-                }
-            } else if base_url_or_dir.starts_with("http://") || base_url_or_dir.starts_with("https://") {
-                // Resolve relative URL
-                #[cfg(not(target_arch = "wasm32"))]
-                {
-                    let url = format!("{}/{}", base_url_or_dir, station_ref.manifest_url.trim_start_matches("./"));
-                    reqwest::get(&url)
-                        .await
-                        .map_err(|e| RegistryError::Network(e.to_string()))?
-                        .text()
-                        .await
-                        .map_err(|e| RegistryError::Network(e.to_string()))?
-                }
-                #[cfg(target_arch = "wasm32")]
-                {
-                    String::new()
-                }
-            } else {
-                // Local relative path
-                let mut path = PathBuf::from(&base_url_or_dir);
-                path.push(station_ref.manifest_url.trim_start_matches("./"));
-                std::fs::read_to_string(path)?
-            };
-
-            if let Ok(manifest) = serde_json::from_str::<StationManifest>(&manifest_content) {
-                if manifest.validate().is_ok() {
-                    self.stations.insert(manifest.id.clone(), manifest);
-                } else {
-                    tracing::warn!("Imported manifest {} failed validation", station_ref.id);
-                }
-            } else {
-                tracing::warn!("Failed to parse manifest for {}", station_ref.id);
+                Err(e) => tracing::warn!("Failed to fetch manifest {}: {}", station_ref.id, e),
             }
         }
 

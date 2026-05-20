@@ -9,23 +9,9 @@ pub fn extract_value<'a>(json: &'a Value, path: &str) -> Option<&'a Value> {
         return Some(json);
     }
 
-    let mut current = json;
-    for segment in path.split('.') {
-        match current {
-            Value::Object(map) => {
-                current = map.get(segment)?;
-            }
-            Value::Array(arr) => {
-                if let Ok(idx) = segment.parse::<usize>() {
-                    current = arr.get(idx)?;
-                } else {
-                    return None;
-                }
-            }
-            _ => return None,
-        }
-    }
-    Some(current)
+    // Convert dot-notation to JSON pointer notation (e.g., "foo.0.bar" -> "/foo/0/bar")
+    let pointer_path = format!("/{}", path.replace('.', "/"));
+    json.pointer(&pointer_path)
 }
 
 pub fn extract_str(json: &Value, path: &str) -> Option<String> {
