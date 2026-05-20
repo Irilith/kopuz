@@ -22,11 +22,55 @@ pub struct StationRegistry {
 }
 
 #[derive(Debug, thiserror::Error)]
+pub enum IndexError {
+    #[error("Registry name cannot be empty")]
+    EmptyName,
+    #[error("Registry description cannot be empty")]
+    EmptyDescription,
+    #[error("Registry must contain at least one station")]
+    NoStations,
+    #[error("Station ID must contain only alphanumeric characters, underscores, and dashes: {0}")]
+    InvalidStationId(String),
+    #[error("Manifest URL cannot be empty for station: {0}")]
+    InvalidManifestUrl(String),
+}
+
+impl RegistryIndex {
+    pub fn validate(&self) -> Result<(), IndexError> {
+        if self.registry_name.trim().is_empty() {
+            return Err(IndexError::EmptyName);
+        }
+        if self.description.trim().is_empty() {
+            return Err(IndexError::EmptyDescription);
+        }
+        if self.stations.is_empty() {
+            return Err(IndexError::NoStations);
+        }
+        for station in &self.stations {
+            if station.id.trim().is_empty()
+                || !station
+                    .id
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+            {
+                return Err(IndexError::InvalidStationId(station.id.clone()));
+            }
+            if station.manifest_url.trim().is_empty() {
+                return Err(IndexError::InvalidManifestUrl(station.id.clone()));
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     #[error("JSON parsing error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("Registry index validation error: {0}")]
+    InvalidIndex(#[from] IndexError),
     #[error("Manifest validation error: {0}")]
     Validation(#[from] ManifestError),
     #[error("Network error: {0}")]
@@ -90,31 +134,52 @@ impl StationRegistry {
     }
 
     pub async fn import_registry(&mut self, url_or_path: &str) -> Result<(), RegistryError> {
-        let (index_content, base_url_or_dir) = fetch_content(url_or_path, None).await?;
-        let index: RegistryIndex = serde_json::from_str(&index_content)?;
+        let (index_content, base_url_or_dir) = match fetch_content(url_or_path, None).await {
+            Ok(res) => res,
+            Err(e) => {
+                tracing::error!("Failed to fetch registry index from {}: {}", url_or_path, e);
+                return Err(e);
+            }
+        };
+
+        let index: RegistryIndex = match serde_json::from_str(&index_content) {
+            Ok(idx) => idx,
+            Err(e) => {
+                tracing::error!("Failed to parse registry index from {}: {}", url_or_path, e);
+                return Err(RegistryError::Json(e));
+            }
+        };
+
+        if let Err(e) = index.validate() {
+            tracing::error!("Invalid registry index from {}: {}", url_or_path, e);
+            return Err(RegistryError::InvalidIndex(e));
+        }
 
         for station_ref in index.stations {
             match fetch_content(&station_ref.manifest_url, Some(&base_url_or_dir)).await {
                 Ok((manifest_content, _)) => {
-                    if let Ok(manifest) = serde_json::from_str::<StationManifest>(&manifest_content) {
-                        if manifest.id != station_ref.id {
-                            tracing::warn!(
-                                "Manifest id mismatch: index id={} manifest id={}",
-                                station_ref.id,
-                                manifest.id
-                            );
-                            continue;
+                    match serde_json::from_str::<StationManifest>(&manifest_content) {
+                        Ok(manifest) => {
+                            if manifest.id != station_ref.id {
+                                tracing::warn!(
+                                    "Station id mismatch: index id={} manifest id={}",
+                                    station_ref.id,
+                                    manifest.id
+                                );
+                                continue;
+                            }
+                            if let Err(e) = manifest.validate() {
+                                tracing::warn!("Imported station '{}' failed validation: {}", station_ref.id, e);
+                            } else {
+                                self.stations.insert(manifest.id.clone(), manifest);
+                            }
                         }
-                        if manifest.validate().is_ok() {
-                            self.stations.insert(manifest.id.clone(), manifest);
-                        } else {
-                            tracing::warn!("Imported manifest {} failed validation", station_ref.id);
+                        Err(e) => {
+                            tracing::warn!("Failed to parse station for '{}': {}", station_ref.id, e);
                         }
-                    } else {
-                        tracing::warn!("Failed to parse manifest for {}", station_ref.id);
                     }
                 }
-                Err(e) => tracing::warn!("Failed to fetch manifest {}: {}", station_ref.id, e),
+                Err(e) => tracing::warn!("Failed to fetch station '{}': {}", station_ref.id, e),
             }
         }
 
@@ -182,5 +247,42 @@ mod tests {
 
         assert_eq!(registry.stations.len(), 1);
         assert!(registry.get("test_station").is_some());
+    }
+
+    #[test]
+    fn test_validate_registry_index() {
+        let valid_json = r#"{
+            "registry_name": "Official Kopuz Radio Registry",
+            "description": "Default radio stations",
+            "stations": [
+                { "id": "listen_moe", "manifest_url": "./stations/listen_moe.json" }
+            ]
+        }"#;
+        let index: RegistryIndex = serde_json::from_str(valid_json).unwrap();
+        assert!(index.validate().is_ok());
+
+        let invalid_json_empty_name = r#"{
+            "registry_name": "   ",
+            "description": "desc",
+            "stations": [{ "id": "a", "manifest_url": "url" }]
+        }"#;
+        let index: RegistryIndex = serde_json::from_str(invalid_json_empty_name).unwrap();
+        assert!(matches!(index.validate(), Err(IndexError::EmptyName)));
+
+        let invalid_json_no_stations = r#"{
+            "registry_name": "name",
+            "description": "desc",
+            "stations": []
+        }"#;
+        let index: RegistryIndex = serde_json::from_str(invalid_json_no_stations).unwrap();
+        assert!(matches!(index.validate(), Err(IndexError::NoStations)));
+
+        let invalid_json_empty_id = r#"{
+            "registry_name": "name",
+            "description": "desc",
+            "stations": [{ "id": "", "manifest_url": "url" }]
+        }"#;
+        let index: RegistryIndex = serde_json::from_str(invalid_json_empty_id).unwrap();
+        assert!(matches!(index.validate(), Err(IndexError::InvalidStationId(_))));
     }
 }

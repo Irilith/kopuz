@@ -844,6 +844,10 @@ fn App() -> Element {
     provide_context(station_registry);
 
     use_effect(move || {
+        if !*initial_load_done.read() {
+            return;
+        }
+
         let registry_paths: Vec<String> = config
             .read()
             .radio_registries

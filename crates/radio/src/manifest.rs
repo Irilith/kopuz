@@ -120,6 +120,10 @@ pub struct FieldMapping {
 pub enum ManifestError {
     #[error("Manifest ID must contain only alphanumeric characters, underscores, and dashes")]
     InvalidId,
+    #[error("Manifest name cannot be empty")]
+    EmptyName,
+    #[error("Manifest description cannot be empty")]
+    EmptyDescription,
     #[error("Stream URLs must use https:// or wss:// scheme. Invalid URL: {0}")]
     InsecureUrl(String),
     #[error("Manifest must contain at least one stream")]
@@ -129,13 +133,21 @@ pub enum ManifestError {
 impl StationManifest {
     pub fn validate(&self) -> Result<(), ManifestError> {
         // ID check
-        if self.id.is_empty()
+        if self.id.trim().is_empty()
             || !self
                 .id
                 .chars()
                 .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
         {
             return Err(ManifestError::InvalidId);
+        }
+
+        if self.name.trim().is_empty() {
+            return Err(ManifestError::EmptyName);
+        }
+
+        if self.description.trim().is_empty() {
+            return Err(ManifestError::EmptyDescription);
         }
 
         if self.streams.is_empty() {
@@ -234,8 +246,8 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_id() {
-        let manifest = StationManifest {
+    fn test_invalid_fields() {
+        let mut manifest = StationManifest {
             schema_version: "1.0".into(),
             id: "test station !".into(),
             name: "Test".into(),
@@ -254,6 +266,14 @@ mod tests {
         };
 
         assert!(matches!(manifest.validate(), Err(ManifestError::InvalidId)));
+
+        manifest.id = "valid_id".into();
+        manifest.name = "   ".into();
+        assert!(matches!(manifest.validate(), Err(ManifestError::EmptyName)));
+
+        manifest.name = "Valid Name".into();
+        manifest.description = "   ".into();
+        assert!(matches!(manifest.validate(), Err(ManifestError::EmptyDescription)));
     }
 
     #[test]
