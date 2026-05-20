@@ -458,7 +458,7 @@ pub fn use_player_task(ctrl: PlayerController) {
                         let song_key = format!("{}|{}|{}", title, artist, album);
 
                         if discord_enabled && song_key != *discord_cover_resolving_for.peek() {
-                            discord_cover_resolving_for.set(song_key);
+                            discord_cover_resolving_for.set(song_key.clone());
                             discord_cover_url.set(None);
                             discord_cover_sent.set(false);
 
@@ -472,6 +472,7 @@ pub fn use_player_task(ctrl: PlayerController) {
                                 };
                                 let artist_c = artist.clone();
                                 let album_c = album.clone();
+                                let song_key_for_spawn = song_key.clone();
                                 spawn(async move {
                                     let resolved = cover_art::resolve_cover_art_url(
                                         mbid.as_deref(),
@@ -479,7 +480,11 @@ pub fn use_player_task(ctrl: PlayerController) {
                                         &album_c,
                                     )
                                     .await;
-                                    discord_cover_url.set(resolved);
+                                    if *discord_cover_resolving_for.peek()
+                                        == song_key_for_spawn
+                                    {
+                                        discord_cover_url.set(resolved);
+                                    }
                                 });
                             }
                         }
