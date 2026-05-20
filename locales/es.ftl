@@ -389,3 +389,14 @@ volume_scroll_step = Paso de desplazamiento del volumen
 radio_registry_url_placeholder = URL o ruta local a index.json
 add_radio_registry = Añadir Registro de Radio
 radio_default_registry = Registro Predeterminado
+
+
+radio_registry_empty_path = La ruta del registro no puede estar vacía
+radio_registry_exists = El registro ya existe
+radio_registry_import_failed = Error al importar el registro: { $error }
+radio_registry_enable_failed = Error al habilitar el registro: { $error }
+radio_registries_active = { $enabled_count }/{ $total } activos
+radio_registries_empty = No hay registros configurados
+offline_downloads = Descargas sin conexión
+download_quality = Calidad de descarga
+saving = Guardando...

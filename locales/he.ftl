@@ -388,3 +388,14 @@ volume_scroll_step = צעד גלילת עוצמה
 radio_registry_url_placeholder = כתובת URL או נתיב מקומי אל index.json
 add_radio_registry = הוסף רשם רדיו
 radio_default_registry = רשם ברירת מחדל
+
+
+radio_registry_empty_path = נתיב הרשומה אינו יכול להיות ריק
+radio_registry_exists = הרשומה כבר קיימת
+radio_registry_import_failed = ייבוא הרשומה נכשל: { $error }
+radio_registry_enable_failed = הפעלת הרשומה נכשלה: { $error }
+radio_registries_active = { $enabled_count }/{ $total } פעילים
+radio_registries_empty = לא הוגדרו רשומות
+offline_downloads = הורדות לא מקוונות
+download_quality = איכות הורדה
+saving = שומר...

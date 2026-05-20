@@ -388,3 +388,14 @@ volume_scroll_step = 音量滚动步长
 radio_registry_url_placeholder = 指向 index.json 的 URL 或本地路径
 add_radio_registry = 添加电台注册表
 radio_default_registry = 默认注册表
+
+
+radio_registry_empty_path = 注册表路径不能为空
+radio_registry_exists = 注册表已存在
+radio_registry_import_failed = 导入注册表失败: { $error }
+radio_registry_enable_failed = 启用注册表失败: { $error }
+radio_registries_active = { $enabled_count }/{ $total } 启用
+radio_registries_empty = 未配置注册表
+offline_downloads = 离线下载
+download_quality = 下载质量
+saving = 保存中...

@@ -388,3 +388,14 @@ volume_scroll_step = Шаг прокрутки громкости
 radio_registry_url_placeholder = URL или локальный путь к index.json
 add_radio_registry = Добавить Реестр Радио
 radio_default_registry = Реестр по Умолчанию
+
+
+radio_registry_empty_path = Путь к реестру не может быть пустым
+radio_registry_exists = Реестр уже существует
+radio_registry_import_failed = Не удалось импортировать реестр: { $error }
+radio_registry_enable_failed = Не удалось включить реестр: { $error }
+radio_registries_active = { $enabled_count }/{ $total } активно
+radio_registries_empty = Реестры не настроены
+offline_downloads = Офлайн-загрузки
+download_quality = Качество загрузки
+saving = Сохранение...

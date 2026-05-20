@@ -394,3 +394,14 @@ volume_scroll_step = خطوة تمرير الصوت
 radio_registry_url_placeholder = مسار محلي أو رابط لـ index.json
 add_radio_registry = إضافة سجل راديو
 radio_default_registry = السجل الافتراضي
+
+
+radio_registry_empty_path = لا يمكن أن يكون مسار السجل فارغًا
+radio_registry_exists = السجل موجود بالفعل
+radio_registry_import_failed = فشل استيراد السجل: { $error }
+radio_registry_enable_failed = فشل تمكين السجل: { $error }
+radio_registries_active = { $enabled_count }/{ $total } نشط
+radio_registries_empty = لم يتم تكوين أي سجلات
+offline_downloads = التنزيلات دون اتصال
+download_quality = جودة التنزيل
+saving = جارٍ الحفظ...

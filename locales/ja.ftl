@@ -394,3 +394,14 @@ volume_scroll_step = 音量スクロールステップ
 radio_registry_url_placeholder = index.json への URL またはローカルパス
 add_radio_registry = ラジオレジストリを追加
 radio_default_registry = デフォルトレジストリ
+
+
+radio_registry_empty_path = レジストリパスを空にすることはできません
+radio_registry_exists = レジストリは既に存在します
+radio_registry_import_failed = レジストリのインポートに失敗しました: { $error }
+radio_registry_enable_failed = レジストリの有効化に失敗しました: { $error }
+radio_registries_active = { $enabled_count }/{ $total } アクティブ
+radio_registries_empty = レジストリが設定されていません
+offline_downloads = オフラインダウンロード
+download_quality = ダウンロード品質
+saving = 保存中...

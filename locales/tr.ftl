@@ -388,3 +388,14 @@ volume_scroll_step = Ses kaydırma adımı
 radio_registry_url_placeholder = index.json için URL veya yerel yol
 add_radio_registry = Radyo Kaydı Ekle
 radio_default_registry = Varsayılan Kayıt
+
+
+radio_registry_empty_path = Kayıt defteri yolu boş olamaz
+radio_registry_exists = Kayıt defteri zaten var
+radio_registry_import_failed = Kayıt defteri içe aktarılamadı: { $error }
+radio_registry_enable_failed = Kayıt defteri etkinleştirilemedi: { $error }
+radio_registries_active = { $enabled_count }/{ $total } aktif
+radio_registries_empty = Yapılandırılmış kayıt defteri yok
+offline_downloads = Çevrimdışı İndirmeler
+download_quality = İndirme Kalitesi
+saving = Kaydediliyor...

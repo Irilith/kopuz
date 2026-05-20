@@ -388,3 +388,14 @@ volume_scroll_step = Lautstärke-Scrollschritt
 radio_registry_url_placeholder = URL oder lokaler Pfad zu index.json
 add_radio_registry = Radio-Verzeichnis hinzufügen
 radio_default_registry = Standard-Verzeichnis
+
+
+radio_registry_empty_path = Registry-Pfad darf nicht leer sein
+radio_registry_exists = Registry existiert bereits
+radio_registry_import_failed = Registry-Import fehlgeschlagen: { $error }
+radio_registry_enable_failed = Registry konnte nicht aktiviert werden: { $error }
+radio_registries_active = { $enabled_count }/{ $total } aktiv
+radio_registries_empty = Keine Registries konfiguriert
+offline_downloads = Offline-Downloads
+download_quality = Download-Qualität
+saving = Speichern...

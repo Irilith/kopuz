@@ -388,3 +388,14 @@ volume_scroll_step = Krok przewijania głośności
 radio_registry_url_placeholder = Adres URL lub ścieżka lokalna do index.json
 add_radio_registry = Dodaj Rejestr Radia
 radio_default_registry = Domyślny Rejestr
+
+
+radio_registry_empty_path = Ścieżka rejestru nie może być pusta
+radio_registry_exists = Rejestr już istnieje
+radio_registry_import_failed = Nie udało się zaimportować rejestru: { $error }
+radio_registry_enable_failed = Nie udało się włączyć rejestru: { $error }
+radio_registries_active = { $enabled_count }/{ $total } aktywne
+radio_registries_empty = Brak skonfigurowanych rejestrów
+offline_downloads = Pobrane offline
+download_quality = Jakość pobierania
+saving = Zapisywanie...

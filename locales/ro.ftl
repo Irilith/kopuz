@@ -388,3 +388,14 @@ volume_scroll_step = Pas de derulare a volumului
 radio_registry_url_placeholder = URL sau cale locală către index.json
 add_radio_registry = Adaugă Registru Radio
 radio_default_registry = Registru Implicit
+
+
+radio_registry_empty_path = Calea registrului nu poate fi goală
+radio_registry_exists = Registrul există deja
+radio_registry_import_failed = Importul registrului a eșuat: { $error }
+radio_registry_enable_failed = Activarea registrului a eșuat: { $error }
+radio_registries_active = { $enabled_count }/{ $total } active
+radio_registries_empty = Niciun registru configurat
+offline_downloads = Descărcări Offline
+download_quality = Calitatea descărcării
+saving = Se salvează...

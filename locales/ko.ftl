@@ -388,3 +388,14 @@ volume_scroll_step = 볼륨 스크롤 단계
 radio_registry_url_placeholder = index.json의 URL 또는 로컬 경로
 add_radio_registry = 라디오 레지스트리 추가
 radio_default_registry = 기본 레지스트리
+
+
+radio_registry_empty_path = 레지스트리 경로를 비워둘 수 없습니다
+radio_registry_exists = 레지스트리가 이미 존재합니다
+radio_registry_import_failed = 레지스트리 가져오기 실패: { $error }
+radio_registry_enable_failed = 레지스트리 활성화 실패: { $error }
+radio_registries_active = { $enabled_count }/{ $total }개 활성화됨
+radio_registries_empty = 구성된 레지스트리가 없습니다
+offline_downloads = 오프라인 다운로드
+download_quality = 다운로드 품질
+saving = 저장 중...

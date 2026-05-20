@@ -378,3 +378,13 @@ radio_live_stream = Live Stream
 radio_registry_url_placeholder = URL or local path to index.json
 add_radio_registry = Add Radio Registry
 radio_default_registry = Default Registry
+
+radio_registry_empty_path = Registry path cannot be empty
+radio_registry_exists = Registry already exists
+radio_registry_import_failed = Failed to import registry: { $error }
+radio_registry_enable_failed = Failed to enable registry: { $error }
+radio_registries_active = { $enabled_count }/{ $total } active
+radio_registries_empty = No registries configured
+offline_downloads = Offline Downloads
+download_quality = Download Quality
+saving = Saving...
