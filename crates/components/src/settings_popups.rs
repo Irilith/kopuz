@@ -162,6 +162,7 @@ pub fn LoginPopup(
 pub fn AddRegistryPopup(
     registry_url: Signal<String>,
     error: Signal<Option<String>>,
+    loading: Signal<bool>,
     on_close: EventHandler<()>,
     on_save: EventHandler<()>,
 ) -> Element {
@@ -172,7 +173,7 @@ pub fn AddRegistryPopup(
     rsx! {
         div {
             class: "overlay",
-            onclick: move |_| on_close.call(()),
+            onclick: move |_| { if !loading() { on_close.call(()) } },
 
             div {
                 class: "popup",
@@ -188,17 +189,20 @@ pub fn AddRegistryPopup(
                     placeholder: "{url_placeholder}",
                     value: "{registry_url()}",
                     oninput: move |e| registry_url.set(e.value()),
-                    onkeydown: move |e| e.stop_propagation()
+                    onkeydown: move |e| e.stop_propagation(),
+                    disabled: loading()
                 }
 
                 div { class: "actions",
                     button {
-                        onclick: move |_| on_close.call(()),
+                        onclick: move |_| if !loading() { on_close.call(()) },
+                        disabled: loading(),
                         "{cancel_text}"
                     }
                     button {
-                        onclick: move |_| on_save.call(()),
-                        "{save_text}"
+                        onclick: move |_| if !loading() { on_save.call(()) },
+                        disabled: loading(),
+                        if loading() { "{i18n::t(\"saving\")}" } else { "{save_text}" }
                     }
                 }
             }

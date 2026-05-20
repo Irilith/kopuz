@@ -77,6 +77,8 @@ pub enum RegistryError {
     Network(String),
     #[error("Invalid URL or path: {0}")]
     InvalidUrl(String),
+    #[error("Station errors: {0}")]
+    StationErrors(String),
 }
 
 async fn fetch_content(url_or_path: &str, base_url_or_dir: Option<&str>) -> Result<(String, String), RegistryError> {
@@ -155,32 +157,48 @@ impl StationRegistry {
             return Err(RegistryError::InvalidIndex(e));
         }
 
+        let mut station_errors = Vec::new();
+
         for station_ref in index.stations {
             match fetch_content(&station_ref.manifest_url, Some(&base_url_or_dir)).await {
                 Ok((manifest_content, _)) => {
                     match serde_json::from_str::<StationManifest>(&manifest_content) {
                         Ok(manifest) => {
                             if manifest.id != station_ref.id {
-                                tracing::warn!(
-                                    "Station id mismatch: index id={} manifest id={}",
-                                    station_ref.id,
-                                    manifest.id
-                                );
+                                let msg = format!("Station id mismatch: index id={} manifest id={}", station_ref.id, manifest.id);
+                                tracing::warn!("{}", msg);
+                                station_errors.push(msg);
                                 continue;
                             }
                             if let Err(e) = manifest.validate() {
-                                tracing::warn!("Imported station '{}' failed validation: {}", station_ref.id, e);
+                                let msg = format!("Imported station '{}' failed validation: {}", station_ref.id, e);
+                                tracing::warn!("{}", msg);
+                                station_errors.push(msg);
                             } else {
                                 self.stations.insert(manifest.id.clone(), manifest);
                             }
                         }
                         Err(e) => {
-                            tracing::warn!("Failed to parse station for '{}': {}", station_ref.id, e);
+                            let msg = format!("Failed to parse station for '{}': {}", station_ref.id, e);
+                            tracing::warn!("{}", msg);
+                            station_errors.push(msg);
                         }
                     }
                 }
-                Err(e) => tracing::warn!("Failed to fetch station '{}': {}", station_ref.id, e),
+                Err(e) => {
+                    let msg = format!("Failed to fetch station '{}': {}", station_ref.id, e);
+                    tracing::warn!("{}", msg);
+                    station_errors.push(msg);
+                }
             }
+        }
+
+        if !station_errors.is_empty() {
+            let mut combined = station_errors[0].clone();
+            if station_errors.len() > 1 {
+                combined.push_str(&format!(" (and {} more errors)", station_errors.len() - 1));
+            }
+            return Err(RegistryError::StationErrors(combined));
         }
 
         Ok(())

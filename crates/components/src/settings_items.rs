@@ -1026,6 +1026,7 @@ pub fn RadioRegistryDropdown(
     on_toggle: EventHandler<usize>,
     on_add: EventHandler<()>,
     on_delete: EventHandler<usize>,
+    error: Signal<Option<String>>,
 ) -> Element {
     let mut expanded = use_signal(|| false);
     let is_open = expanded();
@@ -1039,13 +1040,13 @@ pub fn RadioRegistryDropdown(
                 class: "flex items-center justify-between w-full py-2 cursor-pointer group",
                 onclick: move |_| expanded.set(!is_open),
                 div { class: "flex items-center gap-2",
-                    span { class: "text-white font-medium", "Radio" }
+                    span { class: "text-white font-medium", "{i18n::t(\"radio\")}" }
                     span {
                         class: "text-xs text-slate-500",
                         {
                             let enabled_count = registries.iter().filter(|r| r.enabled).count();
                             let total = registries.len();
-                            format!("{enabled_count}/{total} active")
+                            i18n::t_with("radio_registries_active", &[("enabled_count", enabled_count.to_string()), ("total", total.to_string())])
                         }
                     }
                 }
@@ -1058,7 +1059,10 @@ pub fn RadioRegistryDropdown(
             if is_open {
                 div { class: "flex flex-col gap-2 pl-2 pb-2 border-l border-white/5 ml-1",
                     if registries.is_empty() {
-                        p { class: "text-xs text-slate-500 italic py-1", "No registries configured" }
+                        p { class: "text-xs text-slate-500 italic py-1", "{i18n::t(\"radio_registries_empty\")}" }
+                    }
+                    if let Some(err) = error() {
+                        p { class: "text-xs text-red-400 py-1 mb-1", "{err}" }
                     }
                     for (i, entry) in registries.iter().enumerate() {
                         {
